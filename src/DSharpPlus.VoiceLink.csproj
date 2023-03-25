@@ -4,7 +4,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../../DSharpPlus/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
+    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01453" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <PackageReference Include="Serilog" Version="2.12.0" />
