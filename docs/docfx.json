@@ -64,11 +64,11 @@
       "modern"
     ],
     "globalMetadata": {
-      "_appTitle": "DSharpPlus.CommandAll",
-      "_appName": "CommandAll",
+      "_appTitle": "DSharpPlus.VoiceLink",
+      "_appName": "VoiceLink",
       "_appFaviconPath": "images/favicon.ico",
       "_appLogoPath": "images/logo.png",
-      "_appFooter": "DSharpPlus.CommandAll"
+      "_appFooter": "DSharpPlus.VoiceLink"
     },
     "postProcessors": [],
     "noLangKeyword": false,
