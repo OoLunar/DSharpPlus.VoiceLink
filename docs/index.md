@@ -1,0 +1,8 @@
+# DSharpPlus.CommandAll
+CommandAll (informally referred to as CA) is a custom command library written by [OoLunar](https://github.com/OoLunar) which supports both text commands and application commands. The ultimate goal is to have the capabilities of both the [`CommandsNext`](https://www.nuget.org/packages/DSharpPlus.CommandsNext) and the [`SlashCommands`](https://www.nuget.org/packages/DSharpPlus.SlashCommands) packages. CommandAll makes a best effort basis on writing efficient, yet easily usable code for everyone.
+
+If you are new to DSharpPlus, I recommend following the [Example Bots](https://github.com/DSharpPlus/Example-Bots) that I have written, which is intended to introduce you to the library. If you are new to C# or even programming in general, I recommend following the [C# Tutorial](https://docs.microsoft.com/en-us/dotnet/csharp/tutorials/intro-to-csharp/) on Microsoft's website before attempting to use this library.
+
+All articles are written under the assumption that your program has connected to the Discord gateway using DSharpPlus. If you are unsure how to do this, please refer to the [Example Bots, HelloWorld Example](https://github.com/DSharpPlus/Example-Bots/tree/4.3.0/src/Core/HelloWorld).
+
+Lastly, if you ever get confused or stuck with these articles, we do have a support server: [Forsaken Programmers, `#commandall` channel](https://discord.gg/6bjPzA8P6h). While not as active, you may also use [GitHub Discussions](https://github.com/OoLunar/DSharpPlus.CommandAll/discussions) for support.
