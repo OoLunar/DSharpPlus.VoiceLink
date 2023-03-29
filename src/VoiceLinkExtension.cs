@@ -16,6 +16,7 @@ namespace DSharpPlus.VoiceLink
         public VoiceLinkConfiguration Configuration { get; init; }
         public IReadOnlyDictionary<ulong, VoiceLinkConnection> Connections => _connections;
         internal readonly ConcurrentDictionary<ulong, VoiceLinkConnection> _connections = new();
+        private string? SessionId { get; set; }
 
         public VoiceLinkExtension(VoiceLinkConfiguration configuration) => Configuration = configuration;
 
@@ -31,6 +32,7 @@ namespace DSharpPlus.VoiceLink
             }
 
             Client = client;
+            Client.Ready += ReadyEventHandler;
             Client.VoiceStateUpdated += VoiceStateUpdateEventHandler;
             Client.VoiceServerUpdated += VoiceServerUpdateEventHandler;
         }
@@ -99,6 +101,21 @@ namespace DSharpPlus.VoiceLink
             // As such, we have pre-emptively created event handlers for both events, and wait for both to be received before continuing.
             await connection.IdleUntilReadyAsync();
             return connection;
+        }
+
+        private Task ReadyEventHandler(DiscordClient client, ReadyEventArgs eventArgs)
+        {
+            if (client is null)
+            {
+                throw new ArgumentNullException(nameof(client));
+            }
+            else if (eventArgs is null)
+            {
+                throw new ArgumentNullException(nameof(eventArgs));
+            }
+
+            SessionId = eventArgs.SessionId;
+            return Task.CompletedTask;
         }
 
         private Task VoiceStateUpdateEventHandler(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
