@@ -1,12 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
+using Serilog.Filters;
 using Serilog.Sinks.SystemConsole.Themes;
 
 namespace DSharpPlus.VoiceLink.Examples.HelloWorld
@@ -22,6 +24,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 // Log both to console and the file
                 LoggerConfiguration loggerConfiguration = new LoggerConfiguration()
                 .MinimumLevel.Is(LogEventLevel.Verbose)
+                .Filter.ByIncludingOnly(Matching.FromSource("DSharpPlus.VoiceLink"))
                 .WriteTo.Console(outputTemplate: loggingFormat, theme: new AnsiConsoleTheme(new Dictionary<ConsoleThemeStyle, string>
                 {
                     [ConsoleThemeStyle.Text] = "\x1b[0m",
@@ -63,7 +66,23 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 ServiceCollection = services
             });
 
-            client.GuildDownloadCompleted += (sender, e) => voiceLinkExtension.ConnectAsync(sender.Guilds[1070516376046944286].Channels[1070516376046944290], VoiceState.None);
+            client.GuildDownloadCompleted += async (sender, e) =>
+            {
+                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[1070516376046944286].Channels[1070516376046944290], VoiceState.None);
+                await connection.IdleUntilReadyAsync();
+
+                byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead("../test/Field - Day (The Legend of Zelda: Breath of the Wild OST).webm")).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
+
+                // Advance every 4096 bytes
+                int currentPos = 0;
+                while (currentPos < audio.Length)
+                {
+                    int length = Math.Min(4096, audio.Length - currentPos);
+                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioSender.GetSpan(4096));
+                    connection.AudioSender.Advance(length);
+                    currentPos += length;
+                }
+            };
 
             await client.ConnectAsync();
             await Task.Delay(-1);
