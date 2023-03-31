@@ -13,12 +13,12 @@ jobs:
     - uses: actions/checkout@v2
       with:
         submodules: recursive
-    - name: "Clone Opus"
-      run: "git clone https://gitlab.xiph.org/xiph/opus.git libs/libopus"
-    - name: "Get Latest Version"
-      run: "cd libs/libopus && echo OPUS_VERSION=`git describe --tags `git rev-list --tags --max-count=1`` >> $GITHUB_ENV"
     - name: "Install Opus Build Dependencies"
       run: "sudo apt-get install autoconf automake libtool gcc make"
+    - name: "Clone Opus"
+      run: "git clone https://gitlab.xiph.org/xiph/opus.git libs/libopus && cd libs/libopus"
+    - name: "Get Latest Version"
+      run: "echo \"OPUS_VERSION=`git describe --tags `git rev-list --tags --max-count=1``\" >> $GITHUB_ENV"
     - name: "Build Opus"
       run: "git checkout $OPUS_VERSION && ./autogen.sh && ./configure && make -j`nproc` && cd .. && mv `readlink -f libopus/.libs/libopus.so` libopus.so"
     - name: "Commit Opus"
