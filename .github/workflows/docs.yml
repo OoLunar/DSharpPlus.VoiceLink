@@ -48,6 +48,7 @@ jobs:
           path: ./docs/_site/ # default is _site/
 
   deploy:
+    name: Deploy to GitHub Pages
     # Add a dependency to the build job
     needs: generate-docs
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
