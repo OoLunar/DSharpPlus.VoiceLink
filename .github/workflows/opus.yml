@@ -18,16 +18,15 @@ jobs:
         with:
           submodules: recursive
       - name: Checkout Opus
-        run: |
-          git clone https://gitlab.xiph.org/xiph/opus libs/opus
-          cd libs/opus
-          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
+      - name: Get Opus Latest Version
+        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
       - name: Build on Linux
         run: |
+          cd libs/opus
+          git checkout ${{ env.OPUS_VERSION }}
           sudo apt-get update
           sudo apt-get install autoconf automake libtool gcc make git
-          cd libs/opus
           ./autogen.sh
           ./configure CFLAGS='-O2' CXXFLAGS='-O2'
           make -j`nproc`
@@ -40,6 +39,7 @@ jobs:
           add: "libs/libopus/"
           default_author: github_actions
           message: Update libopus.so to ${{ env.OPUS_VERSION }}
+          pull: '--rebase --autostash'
           push: true
 
   build-macos:
@@ -52,20 +52,22 @@ jobs:
         with:
           submodules: recursive
       - name: Checkout Opus
-        run: |
-          git clone https://gitlab.xiph.org/xiph/opus libs/opus
-          cd libs/opus
-          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
+      - name: Get Opus Latest Version
+        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
       - name: Build on MacOS
         run: |
           cd libs/opus
+          git checkout ${{ env.OPUS_VERSION }}
           brew install autoconf automake libtool git
           ./autogen.sh
           ./configure CFLAGS='-O2' CXXFLAGS='-O2'
           make -j`nproc`
           REAL_FILE=$(readlink -f .libs/libopus.dylib)
           mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus.dylib"
+      - name: Build for MacOS Arm
+        run: |
+          cd libs/opus
           git clean -fdx
           ./autogen.sh
           ./configure --host=arm-apple-darwin20 --target=arm-apple-darwin20 CFLAGS='-O2' CXXFLAGS='-O2'
@@ -78,7 +80,9 @@ jobs:
           add: "libs/libopus/"
           default_author: github_actions
           message: Update libopus.dylib and libopus-arm64.dylib to ${{ env.OPUS_VERSION }}
+          pull: '--rebase --autostash'
           push: true
+
   build-windows:
     name: Build Opus for Windows on Intel/AMD
     needs: build-macos
@@ -93,14 +97,14 @@ jobs:
         with:
           msbuild-architecture: x64
       - name: Checkout Opus
-        run: |
-          git clone https://gitlab.xiph.org/xiph/opus libs/opus
-          cd libs/opus
-          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
+      - name: Get Opus Latest Version
+        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
       - name: Build on Windows
         run: |
-          cd libs/opus/win32/VS2015
+          cd libs/opus
+          git checkout ${{ env.OPUS_VERSION }}
+          cd win32/VS2015
           msbuild opus.sln /property:Configuration="ReleaseDLL" /p:Platform="x64" /p:PlatformToolset=v143 /p:Optimization=2 /m
           mv x64/ReleaseDLL/opus.dll "${{ github.workspace }}/libs/libopus/libopus.dll"
       - name: "Commit Opus"
@@ -109,4 +113,5 @@ jobs:
           add: "libs/libopus/"
           default_author: github_actions
           message: Update libopus.dll to ${{ env.OPUS_VERSION }}
+          pull: '--rebase --autostash'
           push: true
