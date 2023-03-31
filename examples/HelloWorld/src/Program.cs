@@ -68,18 +68,29 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
 
             client.GuildDownloadCompleted += async (sender, e) =>
             {
-                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[1070516376046944286].Channels[1070516376046944290], VoiceState.None);
+                if (!ulong.TryParse(Environment.GetEnvironmentVariable("DISCORD_GUILD"), out ulong guildId))
+                {
+                    throw new Exception("DISCORD_GUILD environment variable is not set or is incorrect.");
+                }
+
+                // no else if cause of scope
+                if (!ulong.TryParse(Environment.GetEnvironmentVariable("DISCORD_CHANNEL"), out ulong channelId))
+                {
+                    throw new Exception("DISCORD_CHANNEL environment variable is not set or is incorrect.");
+                }
+
+                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.UserDeafened);
                 await connection.IdleUntilReadyAsync();
 
-                byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead("../test/Field - Day (The Legend of Zelda: Breath of the Wild OST).webm")).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
+                byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead(Environment.GetEnvironmentVariable("VOICE_FILE") ?? throw new InvalidOperationException("Voice file not set."))).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
 
                 // Advance every 4096 bytes
                 int currentPos = 0;
                 while (currentPos < audio.Length)
                 {
                     int length = Math.Min(4096, audio.Length - currentPos);
-                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioSender.GetSpan(4096));
-                    connection.AudioSender.Advance(length);
+                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(4096));
+                    connection.AudioPipe.Advance(length);
                     currentPos += length;
                 }
             };
