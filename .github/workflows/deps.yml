@@ -26,4 +26,4 @@ jobs:
       with:
         add: "libs/libopus.so"
         default_author: github_actions
-        message: "Update libs/libopus.so to $OPUS_VERSION"
+        message: "Update libs/libopus.so to ${{ env.OPUS_VERSION }}"
