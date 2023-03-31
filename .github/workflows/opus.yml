@@ -99,7 +99,7 @@ jobs:
       - name: Checkout Opus
         run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
       - name: Get Opus Latest Version
-        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
+        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
       - name: Build on Windows
         run: |
           cd libs/opus
