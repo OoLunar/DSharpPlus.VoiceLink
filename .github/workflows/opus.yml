@@ -1,0 +1,110 @@
+name: Update Opus
+on:
+  release:
+    types:
+      - published
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    name: Build for Windows on Intel/AMD
+    runs-on: windows-latest
+    steps:
+      - name: Set up msbuild
+        uses: microsoft/setup-msbuild@v1.3.1
+        with:
+          msbuild-architecture: x64
+      - name: Build on Windows
+        run: |
+          git clone https://github.com/xiph/opus libs/libopus
+          cd libs/libopus
+          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
+          git checkout ${{ env.OPUS_VERSION }}
+          cd libs/libopus/win32/VS2015
+          msbuild opus.sln /property:Configuration="ReleaseDLL" /p:Platform="x64" /p:PlatformToolset=v143 /p:Optimization=2
+          mv x64/ReleaseDLL/opus.dll x64/ReleaseDLL/libopus.dll
+      - name: "Commit Opus"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "opus/win32/VS2015/x64/ReleaseDLL/opus.dll"
+          default_author: github_actions
+          message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
+          push: false
+
+  build-linux:
+    name: Build for Linux on Intel/AMD
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build on Linux
+        run: |
+          sudo apt-get update
+          sudo apt-get install autoconf automake libtool gcc make git
+          git clone https://github.com/xiph/opus libs/libopus
+          cd libs/libopus
+          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
+          git checkout ${{ env.OPUS_VERSION }}
+          ./autogen.sh
+          ./configure CFLAGS='-O2' CXXFLAGS='-O2'
+          make -j`nproc`
+          REAL_FILE=$(readlink -f .libs/libopus.so)
+          rm .libs/libopus.so
+          mv "$REAL_FILE" .libs/libopus.so
+      - name: "Commit Opus"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libopus/.libs/libopus.so"
+          default_author: github_actions
+          message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
+          push: false
+
+  build-macos:
+    name: Build for MacOS on Intel/AMD
+    runs-on: macos-latest
+    steps:
+      - name: Build on MacOS
+        run: |
+          brew install autoconf automake libtool git
+          git clone https://github.com/xiph/opus libs/libopus
+          cd libs/libopus
+          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
+          git checkout ${{ env.OPUS_VERSION }}
+          ./autogen.sh
+          ./configure CFLAGS='-O2' CXXFLAGS='-O2'
+          make -j`nproc`
+          REAL_FILE=$(readlink -f .libs/libopus.dylib)
+          rm .libs/libopus.dylib
+          mv "$REAL_FILE" .libs/libopus.dylib
+      - name: "Commit Opus"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libopus/.libs/libopus.dylib"
+          default_author: github_actions
+          message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
+          push: false
+
+  build-macos-arm:
+    name: Build for MacOS on ARM
+    runs-on: macos-latest
+    steps:
+      - name: Build on MacOS
+        run: |
+          brew install autoconf automake libtool git
+          git clone https://github.com/xiph/opus libs/libopus
+          cd libs/libopus
+          echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
+          git checkout ${{ env.OPUS_VERSION }}
+          ./autogen.sh
+          ./configure --host=arm-apple-darwin20 --target=arm-apple-darwin20 CFLAGS='-O2' CXXFLAGS='-O2'
+          make -j`nproc`
+          REAL_FILE=$(readlink -f .libs/libopus.dylib)
+          mv "$REAL_FILE" .libs/libopus-arm64.dylib
+      - name: "Commit Opus"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libopus/.libs/libopus-arm64.dylib"
+          default_author: github_actions
+          message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
+          push: true
