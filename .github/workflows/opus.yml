@@ -13,6 +13,10 @@ jobs:
     name: Build for Windows on Intel/AMD
     runs-on: windows-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Set up msbuild
         uses: microsoft/setup-msbuild@v1.3.1
         with:
@@ -20,7 +24,6 @@ jobs:
       - name: Build on Windows
         run: |
           git clone https://github.com/xiph/opus libs/libopus
-          cd libs/libopus
           echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
           git checkout ${{ env.OPUS_VERSION }}
           cd libs/libopus/win32/VS2015
@@ -38,6 +41,10 @@ jobs:
     name: Build for Linux on Intel/AMD
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Build on Linux
         run: |
           sudo apt-get update
@@ -64,6 +71,10 @@ jobs:
     name: Build for MacOS on Intel/AMD
     runs-on: macos-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Build on MacOS
         run: |
           brew install autoconf automake libtool git
@@ -89,6 +100,10 @@ jobs:
     name: Build for MacOS on ARM
     runs-on: macos-latest
     steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          submodules: recursive
       - name: Build on MacOS
         run: |
           brew install autoconf automake libtool git
