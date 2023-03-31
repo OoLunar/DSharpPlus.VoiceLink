@@ -22,7 +22,8 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  generate-docs:
+    name: Generate Docs
     runs-on: self-hosted
     if: "!contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[ci-skip]')"
     steps:
@@ -48,7 +49,7 @@ jobs:
 
   deploy:
     # Add a dependency to the build job
-    needs: build
+    needs: generate-docs
     # Grant GITHUB_TOKEN the permissions required to make a Pages deployment
     permissions:
       pages: write      # to deploy to Pages
