@@ -2,9 +2,12 @@
   <PropertyGroup>
     <TargetFramework>net7.0</TargetFramework>
     <Nullable>enable</Nullable>
+    <Platform>x64</Platform>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="DSharpPlus" Version="4.4.0-nightly-01453" />
+    <PackageReference Include="Geralt" Version="2.0.0" />
+    <PackageReference Include="OpusDotNet" Version="1.0.3" />
+    <ProjectReference Include="../libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <PackageReference Include="Serilog" Version="2.12.0" />
