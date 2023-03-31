@@ -5,11 +5,15 @@ on:
         - 'docs/**'
         - 'src/**'
         - 'libs/**'
+        - 'examples/**'
+        - 'tools/**'
   pull_request:
     paths:
         - 'docs/**'
         - 'src/**'
         - 'libs/**'
+        - 'examples/**'
+        - 'tools/**'
 
 env:
   DOTNET_NOLOGO: 1
