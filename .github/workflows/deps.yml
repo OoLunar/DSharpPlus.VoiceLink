@@ -16,7 +16,7 @@ jobs:
     - name: "Clone Opus"
       run: "git clone https://gitlab.xiph.org/xiph/opus.git libs/libopus"
     - name: "Get Latest Version"
-      run: "echo OPUS_VERSION=$(git describe --abbrev=0 --tags) >> $GITHUB_ENV"
+      run: "echo OPUS_VERSION=`git describe --tags `git rev-list --tags --max-count=1`` >> $GITHUB_ENV"
     - name: "Install Opus Build Dependencies"
       run: "sudo apt-get install autoconf automake libtool gcc make"
     - name: "Build Opus"
@@ -26,4 +26,4 @@ jobs:
       with:
         add: "libs/libopus.so"
         default_author: github_actions
-        message: "Update libs/libopus.so to ${{ env.OPUS_VERSION }}"
+        message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
