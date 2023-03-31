@@ -37,6 +37,7 @@ namespace DSharpPlus.VoiceLink
         public DiscordGuild Guild => Channel.Guild;
         public DiscordMember? Member => User as DiscordMember;
         public IReadOnlyDictionary<ulong, VoiceLinkUser> CurrentUsers => _currentUsers;
+        public PipeWriter AudioPipe => _audioPipe.Writer;
 
         internal VoiceStateUpdateEventArgs? _voiceStateUpdateEventArgs { get; set; }
         internal VoiceServerUpdateEventArgs? _voiceServerUpdateEventArgs { get; set; }

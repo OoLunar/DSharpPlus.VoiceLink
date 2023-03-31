@@ -5,8 +5,6 @@
     <Platform>x64</Platform>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Geralt" Version="2.0.0" />
-    <PackageReference Include="OpusDotNet" Version="1.0.3" />
     <ProjectReference Include="../libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
