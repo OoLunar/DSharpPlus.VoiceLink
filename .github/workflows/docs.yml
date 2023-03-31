@@ -17,6 +17,7 @@ permissions:
 jobs:
   build:
     runs-on: self-hosted
+    if: "!contains(toJSON(github.event.head_commit.message), '[ci-skip]')"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
