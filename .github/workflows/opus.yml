@@ -38,7 +38,7 @@ jobs:
           add: "libs/libopus.dll"
           default_author: github_actions
           message: Update libs/libopus.dll to ${{ env.OPUS_VERSION }}
-          pull: '--rebase'
+          pull: '--rebase --autostash'
           push: true
 
   build-linux:
@@ -71,7 +71,7 @@ jobs:
           add: "libs/libopus.so"
           default_author: github_actions
           message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
-          pull: '--rebase'
+          pull: '--rebase --autostash'
           push: true
 
   build-macos:
@@ -103,7 +103,7 @@ jobs:
           add: "libs/libopus.dylib"
           default_author: github_actions
           message: Update libs/libopus.dylib to ${{ env.OPUS_VERSION }}
-          pull: '--rebase'
+          pull: '--rebase --autostash'
           push: true
 
   build-macos-arm:
@@ -135,5 +135,5 @@ jobs:
           add: "libs/libopus-arm64.dylib"
           default_author: github_actions
           message: Update libs/libopus-arm64.dylib to ${{ env.OPUS_VERSION }}
-          pull: '--rebase'
+          pull: '--rebase --autostash'
           push: true
