@@ -5,7 +5,7 @@ namespace DSharpPlus.VoiceLink.Enums
     [Flags]
     public enum VoiceSpeakingIndicators
     {
-        Silent = 0,
+        None = 0,
 
         /// <summary>
         /// Normal transmission of voice audio.

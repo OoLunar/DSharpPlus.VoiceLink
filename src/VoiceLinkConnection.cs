@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO.Pipelines;
 using System.Net.Sockets;
@@ -15,6 +16,8 @@ using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Payloads;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 
 namespace DSharpPlus.VoiceLink
 {
@@ -26,9 +29,14 @@ namespace DSharpPlus.VoiceLink
         public VoiceState VoiceState { get; internal set; }
         public ConnectionState ConnectionState { get; private set; }
 
+        /// <summary>
+        /// The ping is milliseconds between the client sending a heartbeat and receiving a heartbeat ack.
+        /// </summary>
+        public long Ping { get; private set; }
+
         public DiscordGuild Guild => Channel.Guild;
         public DiscordMember? Member => User as DiscordMember;
-        public PipeReader AudioReceiver => _audioPipe.Reader;
+        public IReadOnlyDictionary<ulong, VoiceLinkUser> CurrentUsers => _currentUsers;
 
         internal VoiceStateUpdateEventArgs? _voiceStateUpdateEventArgs { get; set; }
         internal VoiceServerUpdateEventArgs? _voiceServerUpdateEventArgs { get; set; }
@@ -38,7 +46,9 @@ namespace DSharpPlus.VoiceLink
         private readonly Pipe _audioPipe = new();
         private readonly ConcurrentQueue<long> _heartbeatQueue = new();
         private readonly ILogger<VoiceLinkConnection> _logger;
+        private readonly ConcurrentDictionary<ulong, VoiceLinkUser> _currentUsers = new();
         private Uri? _endpointUri { get; set; }
+        private UdpClient? _udpClient { get; set; }
 
         public VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, DiscordUser user, VoiceState voiceState)
         {
@@ -76,6 +86,9 @@ namespace DSharpPlus.VoiceLink
 
             // Connect to endpoint
             _webSocketClient = Extension.Configuration.WebSocketClientFactory(Extension.Configuration.Proxy);
+            _webSocketClient.Connected += ConnectedAsync;
+            _webSocketClient.Disconnected += DisconnectedAsync;
+            _webSocketClient.ExceptionThrown += ExceptionThrownAsync;
             _webSocketClient.MessageReceived += MessageReceivedAsync;
 
             Uri endpointUri = new UriBuilder()
@@ -85,7 +98,6 @@ namespace DSharpPlus.VoiceLink
                 Port = endpointPort,
                 Query = $"v=4&encoding=json"
             }.Uri;
-            _logger.LogDebug("Connection {GuildId}: Connecting to endpoint {Endpoint}", Guild.Id, endpointUri);
             return _webSocketClient.ConnectAsync(endpointUri);
         }
 
@@ -159,6 +171,24 @@ namespace DSharpPlus.VoiceLink
             await _webSocketClient.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Resume, new DiscordVoiceResumingCommand(_voiceServerUpdateEventArgs!.Guild.Id, _voiceStateUpdateEventArgs!.SessionId, _voiceServerUpdateEventArgs.VoiceToken))));
         }
 
+        public Task ConnectedAsync(IWebSocketClient webSocketClient, SocketEventArgs eventArgs)
+        {
+            _logger.LogDebug("Connection {GuildId}: Connected to endpoint {Endpoint}", Guild.Id, _endpointUri);
+            return Task.CompletedTask;
+        }
+
+        public Task DisconnectedAsync(IWebSocketClient webSocketClient, SocketCloseEventArgs eventArgs)
+        {
+            _logger.LogDebug("Connection {GuildId}: Disconnected from endpoint {Endpoint}. Error code {Code}: {Message}", Guild.Id, _endpointUri, eventArgs.CloseCode, eventArgs.CloseMessage);
+            return Task.CompletedTask;
+        }
+
+        public Task ExceptionThrownAsync(IWebSocketClient webSocketClient, SocketErrorEventArgs eventArgs)
+        {
+            _logger.LogError(eventArgs.Exception, "Connection {GuildId}: Exception thrown", Guild.Id);
+            return Task.CompletedTask;
+        }
+
         public Task MessageReceivedAsync(IWebSocketClient webSocketClient, SocketMessageEventArgs eventArgs)
         {
             if (eventArgs is not SocketTextMessageEventArgs textMessageEventArgs)
@@ -166,16 +196,22 @@ namespace DSharpPlus.VoiceLink
                 throw new InvalidOperationException($"The {nameof(eventArgs)} argument is not a {nameof(SocketTextMessageEventArgs)}.");
             }
 
-            VoiceGatewayDispatch payload = DiscordJson.ToDiscordObject<VoiceGatewayDispatch>(textMessageEventArgs.Message);
+            VoiceGatewayDispatch? payload = JsonConvert.DeserializeObject<VoiceGatewayDispatch>(textMessageEventArgs.Message);
+            if (payload is null)
+            {
+                _logger.LogWarning("Connection {GuildId}: Received null payload {Payload}", Guild.Id, textMessageEventArgs);
+                return Task.CompletedTask;
+            }
+
             _logger.LogTrace("Connection {GuildId}: Received payload {Payload}", Guild.Id, payload);
             switch (payload.OpCode)
             {
                 case VoiceOpCode.Hello when ConnectionState is ConnectionState.None:
                     ConnectionState = ConnectionState.Identify;
-                    return SendIdentifyAsync((VoiceHelloPayload)payload.Data!);
+                    return SendIdentifyAsync(((JObject)payload.Data!).ToDiscordObject<VoiceHelloPayload>());
                 case VoiceOpCode.Ready when ConnectionState is ConnectionState.Identify:
                     ConnectionState = ConnectionState.SelectProtocol;
-                    return SendSelectProtocolAsync((VoiceReadyPayload)payload.Data!);
+                    return SendSelectProtocolAsync(((JObject)payload.Data!).ToDiscordObject<VoiceReadyPayload>());
                 case VoiceOpCode.SessionDescription when ConnectionState is ConnectionState.SelectProtocol:
                     ConnectionState = ConnectionState.Heartbeating;
                     _voiceStateUpdateTcs.SetResult();
@@ -183,6 +219,8 @@ namespace DSharpPlus.VoiceLink
                 case VoiceOpCode.Resumed when ConnectionState is ConnectionState.Resuming:
                     ConnectionState = ConnectionState.Heartbeating;
                     break;
+                case VoiceOpCode.HeartbeatAck when ConnectionState is ConnectionState.Heartbeating:
+                    return HandleHeartbeat((long)payload.Data!);
             }
 
             return Task.CompletedTask;
@@ -190,9 +228,9 @@ namespace DSharpPlus.VoiceLink
 
         public void StartHeartbeat(VoiceHelloPayload helloPayload) => Task.Run(async () =>
         {
-            _logger.LogDebug("Connection {GuildId}: Starting heartbeat with a {HeartbeatInterval} timer.", Guild.Id, helloPayload.HeartbeatInterval);
+            _logger.LogDebug("Connection {GuildId}: Starting heartbeat with a {HeartbeatInterval:N0}ms timer.", Guild.Id, helloPayload.HeartbeatInterval);
             PeriodicTimer heartbeatTimer = new(TimeSpan.FromMilliseconds(helloPayload.HeartbeatInterval));
-            while (await heartbeatTimer.WaitForNextTickAsync())
+            while (await heartbeatTimer.WaitForNextTickAsync() && ConnectionState is not ConnectionState.None)
             {
                 if (_heartbeatQueue.Count > Extension.Configuration.MaxHeartbeatQueueSize)
                 {
@@ -205,7 +243,6 @@ namespace DSharpPlus.VoiceLink
                 _heartbeatQueue.Enqueue(unixTimestamp);
                 _logger.LogTrace("Connection {GuildId}: Sending heartbeat {UnixTimestamp}", Guild.Id, unixTimestamp);
                 await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Heartbeat, unixTimestamp)));
-                _logger.LogTrace("Connection {GuildId}: Sent heartbeat {UnixTimestamp}", Guild.Id, unixTimestamp);
             }
         });
 
@@ -219,6 +256,8 @@ namespace DSharpPlus.VoiceLink
                     _logger.LogError("Connection {GuildId}: Heartbeat mismatch, disconnecting and reconnecting.", Guild.Id);
                     return DisconnectAsync();
                 }
+
+                Ping = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - unixTimestamp;
             }
             else
             {
@@ -243,19 +282,19 @@ namespace DSharpPlus.VoiceLink
         public async Task SendSelectProtocolAsync(VoiceReadyPayload voiceReadyPayload)
         {
             // Ip discovery here
-            UdpClient udpClient = new(voiceReadyPayload.Ip, voiceReadyPayload.Port);
+            _udpClient = new(voiceReadyPayload.Ip, voiceReadyPayload.Port);
 
             byte[] ipDiscovery = new DiscordIPDiscovery(0x01, 70, voiceReadyPayload.Ssrc, string.Empty, default);
-            await udpClient.SendAsync(ipDiscovery, ipDiscovery.Length);
+            await _udpClient.SendAsync(ipDiscovery, ipDiscovery.Length);
 
-            DiscordIPDiscovery reply = (await udpClient.ReceiveAsync()).Buffer.AsSpan();
+            DiscordIPDiscovery reply = (await _udpClient.ReceiveAsync()).Buffer.AsSpan();
             _logger.LogDebug("Connection {GuildId}: Received IP discovery reply {Reply}", Guild.Id, reply);
             await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.SelectProtocol, new VoiceSelectProtocolCommand(
                 "udp",
                 new VoiceSelectProtocolCommandData(
                     reply.Address,
                     reply.Port,
-                    voiceReadyPayload.Modes[0]
+                    "xsalsa20_poly1305"
                 )
             ))));
         }
