@@ -18,7 +18,7 @@ jobs:
     - name: "Install Opus Build Dependencies"
       run: "sudo apt-get install autoconf automake libtool gcc make"
     - name: "Build Opus"
-      run: "cd libs/libopus && git checkout $(git describe --tags `git rev-list --tags --max-count=1`) && ./autogen.sh && ./configure && make && cd .. && mv libopus/libsopus.so ."
+      run: "cd libs/libopus && git checkout $(git describe --tags `git rev-list --tags --max-count=1`) && ./autogen.sh && ./configure && make -j`nproc` && cd .. && mv `readlink -f libopus/.libs/libopus.so` libopus.so"
     - name: "Commit Opus"
       uses: EndBug/add-and-commit@v9
       with:
