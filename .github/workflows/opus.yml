@@ -26,7 +26,7 @@ jobs:
           git clone https://github.com/xiph/opus libs/libopus
           cd libs/libopus
           echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+          git checkout $OPUS_VERSION
       - name: Build on Windows
         run: |
           cd libs/libopus/win32/VS2015
@@ -38,6 +38,7 @@ jobs:
           add: "libs/libopus.dll"
           default_author: github_actions
           message: Update libs/libopus.dll to ${{ env.OPUS_VERSION }}
+          pull: '--rebase'
           push: true
 
   build-linux:
@@ -53,7 +54,7 @@ jobs:
           git clone https://github.com/xiph/opus libs/libopus
           cd libs/libopus
           echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+          git checkout $OPUS_VERSION
       - name: Build on Linux
         run: |
           sudo apt-get update
@@ -70,6 +71,7 @@ jobs:
           add: "libs/libopus.so"
           default_author: github_actions
           message: Update libs/libopus.so to ${{ env.OPUS_VERSION }}
+          pull: '--rebase'
           push: true
 
   build-macos:
@@ -85,7 +87,7 @@ jobs:
           git clone https://github.com/xiph/opus libs/libopus
           cd libs/libopus
           echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+          git checkout $OPUS_VERSION
       - name: Build on MacOS
         run: |
           cd libs/libopus
@@ -101,6 +103,7 @@ jobs:
           add: "libs/libopus.dylib"
           default_author: github_actions
           message: Update libs/libopus.dylib to ${{ env.OPUS_VERSION }}
+          pull: '--rebase'
           push: true
 
   build-macos-arm:
@@ -116,7 +119,7 @@ jobs:
           git clone https://github.com/xiph/opus libs/libopus
           cd libs/libopus
           echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV
-          git checkout ${{ env.OPUS_VERSION }}
+          git checkout $OPUS_VERSION
       - name: Build on MacOS
         run: |
           cd libs/libopus
@@ -132,4 +135,5 @@ jobs:
           add: "libs/libopus-arm64.dylib"
           default_author: github_actions
           message: Update libs/libopus-arm64.dylib to ${{ env.OPUS_VERSION }}
+          pull: '--rebase'
           push: true
