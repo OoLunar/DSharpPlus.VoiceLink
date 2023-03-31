@@ -14,11 +14,11 @@ jobs:
       with:
         submodules: recursive
     - name: "Clone Opus"
-      run: "git clone https://gitlab.xiph.org/xiph/opus.git libs/libopus && cd libs/libopus && git checkout $(git describe --tags `git rev-list --tags --max-count=1`)"
+      run: "git clone https://gitlab.xiph.org/xiph/opus.git libs/libopus"
     - name: "Install Opus Build Dependencies"
       run: "sudo apt-get install autoconf automake libtool gcc make"
     - name: "Build Opus"
-      run: "./autogen.sh && ./configure && make . && cd .. && mv libopus/libsopus.so ."
+      run: "cd libs/libopus && git checkout $(git describe --tags `git rev-list --tags --max-count=1`) && ./autogen.sh && ./configure && make . && cd .. && mv libopus/libsopus.so ."
     - name: "Commit Opus"
       uses: EndBug/add-and-commit@v9
       with:
