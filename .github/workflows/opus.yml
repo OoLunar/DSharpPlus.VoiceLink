@@ -43,6 +43,7 @@ jobs:
 
   build-linux:
     name: Build Opus for Linux on Intel/AMD
+    needs: build-windows
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -76,6 +77,7 @@ jobs:
 
   build-macos:
     name: Build Opus for MacOS on Intel/AMD
+    needs: build-linux
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -109,6 +111,7 @@ jobs:
   build-macos-arm:
     name: Build Opus for MacOS on ARM
     runs-on: macos-latest
+    needs: build-macos
     steps:
       - name: Checkout
         uses: actions/checkout@v3
