@@ -219,6 +219,7 @@ namespace DSharpPlus.VoiceLink
                     break;
                 case VoiceOpCode.Resumed when ConnectionState is ConnectionState.Resuming:
                     ConnectionState = ConnectionState.Heartbeating;
+
                     break;
                 case VoiceOpCode.HeartbeatAck when ConnectionState is ConnectionState.Heartbeating:
                     return HandleHeartbeat((long)payload.Data!);
