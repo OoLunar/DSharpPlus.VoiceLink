@@ -5,6 +5,9 @@ namespace DSharpPlus.VoiceLink.Enums
     [Flags]
     public enum VoiceSpeakingIndicators
     {
+        /// <summary>
+        /// No longer speaking.
+        /// </summary>
         None = 0,
 
         /// <summary>
