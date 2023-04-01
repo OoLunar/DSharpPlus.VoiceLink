@@ -4,29 +4,35 @@ namespace DSharpPlus.VoiceLink.Opus
 {
     public struct OpusDecoder : IDisposable
     {
+        /// <inheritdoc cref="OpusNativeMethods.DecoderGetSize(int)"/>
         public static int GetSize(int channels) => OpusNativeMethods.DecoderGetSize(channels);
 
+        /// <returns>A new decoder instance.</returns>
+        /// <exception cref="OpusException">The Opus library has thrown an exception.</exception>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderCreate(OpusSampleRate, int, out OpusErrorCode)"/>
         public static unsafe OpusDecoder Create(OpusSampleRate sampleRate, int channels)
         {
             OpusDecoder* decoder = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode errorCode);
-            return errorCode switch
-            {
-                OpusErrorCode.Ok => *decoder,
-                OpusErrorCode.BadArg => throw new ArgumentException("Invalid argument passed to the decoder."),
-                OpusErrorCode.AllocFail => throw new InvalidOperationException("Failed to allocate memory for the decoder."),
-                OpusErrorCode.InternalError => throw new InvalidOperationException("An internal error occurred in the decoder."),
-                _ => *decoder
-            };
+            return errorCode != OpusErrorCode.Ok ? throw new OpusException(errorCode) : *decoder;
         }
 
-        public unsafe OpusErrorCode Init(OpusSampleRate sampleRate, int channels)
+        /// <returns></returns>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderInit(OpusDecoder*, OpusSampleRate, int)"/>
+        public unsafe void Init(OpusSampleRate sampleRate, int channels)
         {
+            OpusErrorCode errorCode;
             fixed (OpusDecoder* pinned = &this)
             {
-                return OpusNativeMethods.DecoderInit(pinned, sampleRate, channels);
+                errorCode = OpusNativeMethods.DecoderInit(pinned, sampleRate, channels);
+            }
+
+            if (errorCode != OpusErrorCode.Ok)
+            {
+                throw new OpusException(errorCode);
             }
         }
 
+        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, byte*, int, int)"/>
         public unsafe int Decode(ReadOnlySpan<byte> data, ref Span<byte> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
@@ -40,15 +46,7 @@ namespace DSharpPlus.VoiceLink.Opus
             // Less than zero means an error occurred
             if (decodedLength < 0)
             {
-                throw (OpusErrorCode)decodedLength switch
-                {
-                    OpusErrorCode.BadArg => new ArgumentException("Invalid argument passed to the decoder."),
-                    OpusErrorCode.AllocFail => new InvalidOperationException("Failed to allocate memory for the decoder."),
-                    OpusErrorCode.InternalError => new InvalidOperationException("An internal error occurred in the decoder."),
-                    OpusErrorCode.BufferTooSmall => new InvalidOperationException("The buffer is too small to hold the decoded data."),
-                    OpusErrorCode.InvalidPacket => new InvalidOperationException("The compressed data passed is corrupted or of an unsupported type."),
-                    _ => new InvalidOperationException("An unknown error occurred in the decoder.")
-                };
+                throw new OpusException((OpusErrorCode)decodedLength);
             }
 
             // Trim the data to the encoded length
@@ -56,6 +54,7 @@ namespace DSharpPlus.VoiceLink.Opus
             return decodedLength;
         }
 
+        /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, byte*, int, int)"/>
         public unsafe int DecodeFloat(ReadOnlySpan<byte> data, ref Span<byte> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
@@ -69,15 +68,7 @@ namespace DSharpPlus.VoiceLink.Opus
             // Less than zero means an error occurred
             if (decodedLength < 0)
             {
-                throw (OpusErrorCode)decodedLength switch
-                {
-                    OpusErrorCode.BadArg => new ArgumentException("Invalid argument passed to the decoder."),
-                    OpusErrorCode.AllocFail => new InvalidOperationException("Failed to allocate memory for the decoder."),
-                    OpusErrorCode.InternalError => new InvalidOperationException("An internal error occurred in the decoder."),
-                    OpusErrorCode.BufferTooSmall => new InvalidOperationException("The buffer is too small to hold the decoded data."),
-                    OpusErrorCode.InvalidPacket => new InvalidOperationException("The compressed data passed is corrupted or of an unsupported type."),
-                    _ => new InvalidOperationException("An unknown error occurred in the decoder.")
-                };
+                throw new OpusException((OpusErrorCode)decodedLength);
             }
 
             // Trim the data to the encoded length
@@ -85,6 +76,7 @@ namespace DSharpPlus.VoiceLink.Opus
             return decodedLength;
         }
 
+        /// <inheritdoc cref="OpusNativeMethods.DecoderControl(OpusDecoder*, OpusControlRequest, int)"/>
         public unsafe void Control(OpusControlRequest control, int value)
         {
             OpusErrorCode errorCode;
@@ -93,23 +85,39 @@ namespace DSharpPlus.VoiceLink.Opus
                 errorCode = OpusNativeMethods.DecoderControl(pinned, control, value);
             }
 
-            switch (errorCode)
+            if (errorCode != OpusErrorCode.Ok)
             {
-                case OpusErrorCode.BadArg: throw new ArgumentException("Invalid argument passed to the decoder.");
-                case OpusErrorCode.AllocFail: throw new InvalidOperationException("Failed to allocate memory for the decoder.");
-                case OpusErrorCode.InternalError: throw new InvalidOperationException("An internal error occurred in the decoder.");
-                case OpusErrorCode.InvalidPacket: throw new InvalidOperationException("The compressed data passed is corrupted or of an unsupported type.");
-                case OpusErrorCode.Unimplemented: throw new NotImplementedException("The request number is valid but not implemented by this version of the library.");
-                case OpusErrorCode.InvalidState: throw new InvalidOperationException("The decoder structure passed is invalid or already freed.");
+                throw new OpusException(errorCode);
             }
         }
 
+        /// <inheritdoc cref="OpusNativeMethods.DecoderDestroy(OpusDecoder*)"/>
         public unsafe void Destroy()
         {
             fixed (OpusDecoder* pinned = &this)
             {
                 OpusNativeMethods.DecoderDestroy(pinned);
             }
+        }
+
+        /// <summary>
+        /// Gets the number of samples per channel of a packet.
+        /// </summary>
+        /// <exception cref="ArgumentException">Invalid argument passed to the decoder.</exception>
+        /// <exception cref="InvalidOperationException">The compressed data passed is corrupted or of an unsupported type or an unknown error occured.</exception>
+        /// <returns>The number of samples per channel of a packet.</returns>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderGetSampleCount(OpusDecoder*, byte*, int)"/>
+        public unsafe int GetSampleCount(ReadOnlySpan<byte> data)
+        {
+            int sampleCount;
+            fixed (OpusDecoder* pinned = &this)
+            fixed (byte* dataPointer = data)
+            {
+                sampleCount = OpusNativeMethods.DecoderGetSampleCount(pinned, dataPointer, data.Length);
+            }
+
+            // Less than zero means an error occurred
+            return sampleCount > 0 ? sampleCount : throw new OpusException((OpusErrorCode)sampleCount);
         }
 
         public void Dispose() => Destroy();
