@@ -17,7 +17,7 @@ namespace DSharpPlus.VoiceLink.Opus
         GetApplication = 4001,
         
         /// <summary>
-        /// Configures the bitrate in the encoder. Rates from 500 to 512000 bits per second are meaningful, as well as the special values OPUS_AUTO and OPUS_BITRATE_MAX. The value OPUS_BITRATE_MAX can be used to cause the codec to use as much rate as it can, which is useful for controlling the rate by adjusting the output buffer size.
+        /// Configures the bitrate in the encoder. Rates from 500 to 512000 bits per second are meaningful, as well as the special values <see cref="OpusApplication.Auto"/> and OPUS_BITRATE_MAX. The value OPUS_BITRATE_MAX can be used to cause the codec to use as much rate as it can, which is useful for controlling the rate by adjusting the output buffer size.
         /// </summary>
         SetBitrate = 4002,
         
@@ -27,7 +27,7 @@ namespace DSharpPlus.VoiceLink.Opus
         GetBitrate = 4003,
         
         /// <summary>
-        /// Configures the maximum bandpass that the encoder will select automatically. Applications should normally use this instead of OPUS_SET_BANDWIDTH (leaving that set to the default, OPUS_AUTO). This allows the application to set an upper bound based on the type of input it is providing, but still gives the encoder the freedom to reduce the bandpass when the bitrate becomes too low, for better overall quality.
+        /// Configures the maximum bandpass that the encoder will select automatically. Applications should normally use this instead of <see cref="SetBandwidth"/> (leaving that set to the default, <see cref="OpusApplication.Auto"/>). This allows the application to set an upper bound based on the type of input it is providing, but still gives the encoder the freedom to reduce the bandpass when the bitrate becomes too low, for better overall quality.
         /// </summary>
         SetMaxBandwidth = 4004,
         
@@ -47,7 +47,7 @@ namespace DSharpPlus.VoiceLink.Opus
         GetVbr = 4007,
         
         /// <summary>
-        /// Sets the encoder's bandpass to a specific value. This prevents the encoder from automatically selecting the bandpass based on the available bitrate. If an application knows the bandpass of the input audio it is providing, it should normally use OPUS_SET_MAX_BANDWIDTH instead, which still gives the encoder the freedom to reduce the bandpass when the bitrate becomes too low, for better overall quality.
+        /// Sets the encoder's bandpass to a specific value. This prevents the encoder from automatically selecting the bandpass based on the available bitrate. If an application knows the bandpass of the input audio it is providing, it should normally use <see cref="SetMaxBandwidth"/> instead, which still gives the encoder the freedom to reduce the bandpass when the bitrate becomes too low, for better overall quality.
         /// </summary>
         SetBandwidth = 4008,
         
@@ -144,7 +144,7 @@ namespace DSharpPlus.VoiceLink.Opus
         //ResetState = 4028, //Commented out in the reference Implementation.
         
         /// <summary>
-        /// Gets the sampling rate the encoder or decoder was initialized with. This simply returns the Fs value passed to opus_encoder_init() or opus_decoder_init().
+        /// Gets the sampling rate the encoder or decoder was initialized with. This simply returns the value passed to <see cref="OpusEncoder.Init"/> or <see cref="OpusDecoder.Init"/>.
         /// </summary>
         GetSampleRate = 4029,
         
@@ -162,10 +162,10 @@ namespace DSharpPlus.VoiceLink.Opus
         GetPitch = 4033,
         
         /// <summary>
-        /// Configures decoder gain adjustment. Scales the decoded output by a factor specified in Q8 dB units. This has a maximum range of -32768 to 32767 inclusive, and returns OPUS_BAD_ARG otherwise. The default is zero indicating no adjustment. This setting survives decoder reset.
+        /// Configures decoder gain adjustment. Scales the decoded output by a factor specified in Q8 dB units. This has a maximum range of -32768 to 32767 inclusive, and returns <see cref="OpusErrorCode.BadArg"/> otherwise. The default is zero indicating no adjustment. This setting survives decoder reset.
         /// </summary>
         /// <remarks>
-        /// gain = pow(10, x/(20.0*256))
+        /// <c>gain = pow(10, x/(20.0*256))</c>
         /// </remarks>
         SetGain = 4034,
         
@@ -177,8 +177,8 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <summary>
         /// Configures the depth of signal being encoded.
         /// This is a hint which helps the encoder identify silence and near-silence. It represents the number of significant bits of linear intensity below which the signal contains ignorable quantization or other noise.
-        /// For example, OPUS_SET_LSB_DEPTH(14) would be an appropriate setting for G.711 u-law input. OPUS_SET_LSB_DEPTH(16) would be appropriate for 16-bit linear pcm input with opus_encode_float().
-        /// When using opus_encode() instead of opus_encode_float(), or when libopus is compiled for fixed-point, the encoder uses the minimum of the value set here and the value 16.
+        /// For example, <see cref="SetLsbDepth"/> with a value of 14 would be an appropriate setting for G.711 u-law input. <see cref="SetLsbDepth"/> with a value of 16 would be appropriate for 16-bit linear pcm input with <see cref="OpusEncoder.EncodeFloat"/>.
+        /// When using <see cref="OpusEncoder.Encode"/> instead of <see cref="OpusEncoder.EncodeFloat"/>, or when libopus is compiled for fixed-point, the encoder uses the minimum of the value set here and the value 16.
         /// </summary>
         SetLsbDepth = 4036,
         
@@ -193,7 +193,7 @@ namespace DSharpPlus.VoiceLink.Opus
         GetLastPacketDuration = 4039,
         
         /// <summary>
-        /// Configures the encoder's use of variable duration frames. When variable duration is enabled, the encoder is free to use a shorter frame size than the one requested in the opus_encode*() call. It is then the user's responsibility to verify how much audio was encoded by checking the ToC byte of the encoded packet. The part of the audio that was not encoded needs to be resent to the encoder for the next call. Do not use this option unless you really know what you are doing.
+        /// Configures the encoder's use of variable duration frames. When variable duration is enabled, the encoder is free to use a shorter frame size than the one requested in the <see cref="OpusEncoder.Encode"/> call. It is then the user's responsibility to verify how much audio was encoded by checking the ToC byte of the encoded packet. The part of the audio that was not encoded needs to be resent to the encoder for the next call. Do not use this option unless you really know what you are doing.
         /// </summary>
         SetExpertFrameDuration = 4040,
         
@@ -203,7 +203,7 @@ namespace DSharpPlus.VoiceLink.Opus
         GetExpertFrameDuration = 4041,
         
         /// <summary>
-        /// If set to 1, disables almost all use of prediction, making frames almost completely independent. This reduces quality.
+        /// If set to <see langword="true"/>, disables almost all use of prediction, making frames almost completely independent. This reduces quality.
         /// </summary>
         SetPredictionDisabled = 4042,
         
@@ -215,7 +215,7 @@ namespace DSharpPlus.VoiceLink.Opus
         //4045 is GetGain
 
         /// <summary>
-        /// If set to 1, disables the use of phase inversion for intensity stereo, improving the quality of mono downmixes, but slightly reducing normal stereo quality. Disabling phase inversion in the decoder does not comply with RFC 6716, although it does not cause any interoperability issue and is expected to become part of the Opus standard once RFC 6716 is updated by draft-ietf-codec-opus-update.
+        /// If set to <see langword="true"/>, disables the use of phase inversion for intensity stereo, improving the quality of mono downmixes, but slightly reducing normal stereo quality. Disabling phase inversion in the decoder does not comply with RFC 6716, although it does not cause any interoperability issue and is expected to become part of the Opus standard once RFC 6716 is updated by draft-ietf-codec-opus-update.
         /// </summary>
         SetPhaseInversionDisabled = 4046,
         
