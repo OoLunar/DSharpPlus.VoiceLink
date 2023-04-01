@@ -1,6 +1,6 @@
 namespace DSharpPlus.VoiceLink.Opus
 {
-    public enum OpusError
+    public enum OpusErrorCode
     {
         /// <summary>
         /// No error.
