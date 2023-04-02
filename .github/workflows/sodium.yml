@@ -95,10 +95,10 @@ jobs:
               run: |
                 cd libs/sodium
                 git checkout ${{ env.SODIUM_VERSION }}
-                export CFLAGS="-Ofast -fomit-frame-pointer -m64 -mtune=westmere"
-                export PREFIX="$(pwd)/libsodium-win64"
+                $Env:CFLAGS="-Ofast -fomit-frame-pointer -m64 -mtune=westmere"
+                $Env:PREFIX="$(pwd)/libsodium-win64"
                 ./configure --host=x86_64-w64-mingw32
-                make -j`nproc`
+                make
                 make check
                 ls -lsah src/libsodium/.libs/ || true
                 mv "src/libsodium/.libs/sodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
