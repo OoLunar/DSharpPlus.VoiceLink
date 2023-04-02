@@ -39,7 +39,7 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="data">Opus packet.</param>
         /// <returns>Number of channels or <see cref="OpusErrorCode.InvalidPacket"/>.</returns>
         [LibraryImport("opus", EntryPoint = "opus_packet_get_nb_channels")]
-        public static unsafe partial int PacketGetChannelCount(byte* data);
+        public static unsafe partial int PacketGetNbChannels(byte* data);
 
         /// <summary>
         /// Gets the number of frames in an Opus packet.
@@ -48,11 +48,11 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="length">Length of packet.</param>
         /// <returns>Number of frames or <see cref="OpusErrorCode.BadArg"/> <see cref="OpusErrorCode.InvalidPacket"/>.</returns>
         [LibraryImport("opus", EntryPoint = "opus_packet_get_nb_frames")]
-        public static unsafe partial int PacketGetFrameCount(byte* data, int length);
+        public static unsafe partial int PacketGetNbFrames(byte* data, int length);
 
         /// <param name="sampleRate">Sampling rate in Hz. This must be a multiple of 400, or inaccurate results will be returned.</param>
-        /// <inheritdoc cref="DecoderGetSampleCount(OpusDecoder*, byte*, int)"/>
+        /// <inheritdoc cref="DecoderGetNbSamples(OpusDecoder*, byte*, int)"/>
         [LibraryImport("opus", EntryPoint = "opus_packet_get_nb_samples")]
-        public static unsafe partial int PacketGetSampleCount(byte* data, int length, int sampleRate);
+        public static unsafe partial int PacketGetNbSamples(byte* data, int length, int sampleRate);
     }
 }

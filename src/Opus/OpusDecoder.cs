@@ -106,14 +106,14 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <exception cref="ArgumentException">Invalid argument passed to the decoder.</exception>
         /// <exception cref="InvalidOperationException">The compressed data passed is corrupted or of an unsupported type or an unknown error occured.</exception>
         /// <returns>The number of samples per channel of a packet.</returns>
-        /// <inheritdoc cref="OpusNativeMethods.DecoderGetSampleCount(OpusDecoder*, byte*, int)"/>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderGetNbSamples(OpusDecoder*, byte*, int)"/>
         public unsafe int GetSampleCount(ReadOnlySpan<byte> data)
         {
             int sampleCount;
             fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
             {
-                sampleCount = OpusNativeMethods.DecoderGetSampleCount(pinned, dataPointer, data.Length);
+                sampleCount = OpusNativeMethods.DecoderGetNbSamples(pinned, dataPointer, data.Length);
             }
 
             // Less than zero means an error occurred
