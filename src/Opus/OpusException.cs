@@ -19,6 +19,11 @@ namespace DSharpPlus.VoiceLink.Opus
         public OpusException(OpusErrorCode errorCode, string message, Exception inner) : base(message, inner) => ErrorCode = errorCode;
         private OpusException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 
+        /// <summary>
+        /// Matches an error code to a human-readable error message.
+        /// </summary>
+        /// <param name="errorCode">The error code to match.</param>
+        /// <returns>A human-readable error message.</returns>
         public static string GetErrorMessage(OpusErrorCode errorCode) => errorCode switch
         {
             OpusErrorCode.Ok => "No error.",

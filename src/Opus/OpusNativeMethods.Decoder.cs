@@ -73,6 +73,6 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="length">Length of packet.</param>
         /// <returns>Number of samples or <see cref="OpusErrorCode.BadArg"/> or <see cref="OpusErrorCode.InvalidPacket"/>.</returns>
         [LibraryImport("opus", EntryPoint = "opus_decoder_get_nb_samples")]
-        public static unsafe partial int DecoderGetSampleCount(OpusDecoder* decoder, byte* data, int length);
+        public static unsafe partial int DecoderGetNbSamples(OpusDecoder* decoder, byte* data, int length);
     }
 }
