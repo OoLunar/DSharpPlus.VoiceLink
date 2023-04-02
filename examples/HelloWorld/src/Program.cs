@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -70,13 +70,13 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
             {
                 if (!ulong.TryParse(Environment.GetEnvironmentVariable("DISCORD_GUILD"), out ulong guildId))
                 {
-                    throw new Exception("DISCORD_GUILD environment variable is not set or is incorrect.");
+                    throw new InvalidOperationException("DISCORD_GUILD environment variable is not set or is incorrect.");
                 }
 
                 // no else if cause of scope
                 if (!ulong.TryParse(Environment.GetEnvironmentVariable("DISCORD_CHANNEL"), out ulong channelId))
                 {
-                    throw new Exception("DISCORD_CHANNEL environment variable is not set or is incorrect.");
+                    throw new InvalidOperationException("DISCORD_CHANNEL environment variable is not set or is incorrect.");
                 }
 
                 VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.UserDeafened);
@@ -89,7 +89,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 while (currentPos < audio.Length)
                 {
                     int length = Math.Min(4096, audio.Length - currentPos);
-                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(4096));
+                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(length));
                     connection.AudioPipe.Advance(length);
                     currentPos += length;
                 }
