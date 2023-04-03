@@ -4,9 +4,19 @@
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>OoLunar.DSharpPlus.VoiceLink</PackageId>
+    <Description>An updated voice extension for the DSharpPlus Discord library.</Description>
+    <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
+    <Authors>OoLunar, InFTord, Aaron2550</Authors>
+    <PackageProjectUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</RepositoryUrl>
+    <RepositoryType>Git</RepositoryType>
+    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+  </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="4.4.0" />
     <PackageReference Include="Geralt" Version="2.0.0" />
-    <ProjectReference Include="../libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />
     <PackageReference Include="Serilog" Version="2.12.0" />
