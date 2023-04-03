@@ -48,7 +48,7 @@ jobs:
           push: true
 
   build-macos:
-    name: Build Opus for MacOS x64/Arm
+    name: Build Opus for MacOS x64
     needs: build-linux
     runs-on: macos-latest
     steps:
@@ -85,7 +85,7 @@ jobs:
         with:
           add: "libs/libopus/"
           default_author: github_actions
-          message: Update libopus.dylib and libopus-arm64.dylib to ${{ env.OPUS_VERSION }}
+          message: Update libopus.dylib to ${{ env.OPUS_VERSION }}
           pull: '--rebase --autostash'
           push: true
 
