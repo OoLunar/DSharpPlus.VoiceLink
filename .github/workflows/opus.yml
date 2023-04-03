@@ -8,7 +8,7 @@ on:
     branches:
         - master
     paths:
-        - .github/workflows/opus.yml
+        - '.github/workflows/opus.yml'
 
 permissions:
   contents: write

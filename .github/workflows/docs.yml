@@ -9,6 +9,7 @@ on:
       - 'docs/**'
       - 'src/**'
       - 'libs/**'
+      - '.github/workflows/docs.yml'
     branches:
       - master
 
