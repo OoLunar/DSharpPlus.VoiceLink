@@ -111,6 +111,7 @@ jobs:
           git checkout ${{ env.OPUS_VERSION }}
           cd win32/VS2015
           msbuild opus.sln /property:Configuration="ReleaseDLL" /p:Platform="x64" /p:PlatformToolset=v143 /p:Optimization=2 /m
+          rm "${{ github.workspace }}/libs/libopus/opus.dll"
           mv x64/ReleaseDLL/opus.dll "${{ github.workspace }}/libs/libopus/opus.dll"
       - name: "Commit Opus"
         uses: EndBug/add-and-commit@v9
