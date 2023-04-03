@@ -96,6 +96,10 @@ jobs:
               run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
             - name: Get Sodium latest version
               run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
+            - name: Set up MSBuild
+              uses: microsoft/setup-msbuild@v1.3.1
+              with:
+                msbuild-architecture: x64
             - name: Build for Windows x64
               run: |
                 cd libs/sodium
