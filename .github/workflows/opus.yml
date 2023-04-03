@@ -4,6 +4,11 @@ on:
     types:
       - published
   workflow_dispatch:
+  push:
+    branches:
+        - master
+    paths:
+        - .github/workflows/opus.yml
 
 permissions:
   contents: write
