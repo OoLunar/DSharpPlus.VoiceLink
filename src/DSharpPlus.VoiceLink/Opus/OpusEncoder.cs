@@ -30,12 +30,12 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="data">The encoded data.</param>
         /// <returns>The length of the encoded packet (in bytes)</returns>
         /// <exception cref="OpusException">The Opus library has thrown an exception.</exception>
-        /// <inheritdoc cref="OpusNativeMethods.Encode(OpusEncoder*, byte*, int, byte*, int)"/>
-        public unsafe int Encode(ReadOnlySpan<byte> pcm, int frameSize, ref Span<byte> data)
+        /// <inheritdoc cref="OpusNativeMethods.Encode(OpusEncoder*, short*, int, byte*, int)"/>
+        public unsafe int Encode(ReadOnlySpan<short> pcm, int frameSize, ref Span<byte> data)
         {
             int encodedLength;
             fixed (OpusEncoder* pinned = &this)
-            fixed (byte* pcmPointer = pcm)
+            fixed (short* pcmPointer = pcm)
             fixed (byte* dataPointer = data)
             {
                 encodedLength = OpusNativeMethods.Encode(pinned, pcmPointer, frameSize, dataPointer, data.Length);
@@ -55,12 +55,12 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="data">The encoded data.</param>
         /// <returns>The length of the encoded packet (in bytes)</returns>
         /// <exception cref="OpusException">The Opus library has thrown an exception.</exception>
-        /// <inheritdoc cref="OpusNativeMethods.EncodeFloat(OpusEncoder*, byte*, int, byte*, int)"/>
-        public unsafe int EncodeFloat(ReadOnlySpan<byte> pcm, int frameSize, ref Span<byte> data)
+        /// <inheritdoc cref="OpusNativeMethods.EncodeFloat(OpusEncoder*, float*, int, byte*, int)"/>
+        public unsafe int EncodeFloat(ReadOnlySpan<float> pcm, int frameSize, ref Span<byte> data)
         {
             int encodedLength;
             fixed (OpusEncoder* pinned = &this)
-            fixed (byte* pcmPointer = pcm)
+            fixed (float* pcmPointer = pcm)
             fixed (byte* dataPointer = data)
             {
                 encodedLength = OpusNativeMethods.EncodeFloat(pinned, pcmPointer, frameSize, dataPointer, data.Length);

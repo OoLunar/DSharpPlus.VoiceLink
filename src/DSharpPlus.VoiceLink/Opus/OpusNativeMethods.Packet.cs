@@ -15,7 +15,7 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="payloadOffset">Returns the position of the payload within the packet (in bytes).</param>
         /// <returns>Number of frames.</returns>
         [LibraryImport("opus", EntryPoint = "opus_packet_parse")]
-        public static unsafe partial int PacketParse(byte* data, int length, byte* toc, byte* frames, int* size, int* payloadOffset);
+        public static unsafe partial int PacketParse(byte* data, int length, byte* toc, byte* frames, short* size, int* payloadOffset);
 
         /// <summary>
         /// Gets the bandwidth of an Opus packet.
