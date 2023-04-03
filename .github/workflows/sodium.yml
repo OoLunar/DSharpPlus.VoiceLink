@@ -95,12 +95,8 @@ jobs:
               run: |
                 cd libs/sodium
                 git checkout ${{ env.SODIUM_VERSION }}
-                $Env:CFLAGS="-Ofast -fomit-frame-pointer -m64 -mtune=westmere"
-                $Env:PREFIX="$(pwd)/libsodium-win64"
-                ./configure --host=x86_64-w64-mingw32
-                make
-                make check
-                ls -lsah src/libsodium/.libs/ || true
+                dist-build/msys2-win64.sh
+                ls -lsah src/libsodium/.libs/
                 mv "src/libsodium/.libs/sodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
             - name: "Commit Sodium"
               uses: EndBug/add-and-commit@v9
