@@ -5,7 +5,7 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/DSharpPlus.VoiceLink.csproj" />
+    <ProjectReference Include="../../src/DSharpPlus.VoiceLink/DSharpPlus.VoiceLink.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Matroska" Version="0.0.9" />
