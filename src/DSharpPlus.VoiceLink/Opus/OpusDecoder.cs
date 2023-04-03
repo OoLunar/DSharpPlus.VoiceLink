@@ -9,11 +9,11 @@ namespace DSharpPlus.VoiceLink.Opus
 
         /// <returns>A new decoder instance.</returns>
         /// <exception cref="OpusException">The Opus library has thrown an exception.</exception>
-        /// <inheritdoc cref="OpusNativeMethods.DecoderCreate(OpusSampleRate, int, out OpusErrorCode)"/>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderCreate(OpusSampleRate, int, out OpusErrorCode*)"/>
         public static unsafe OpusDecoder Create(OpusSampleRate sampleRate, int channels)
         {
-            OpusDecoder* decoder = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode errorCode);
-            return errorCode != OpusErrorCode.Ok ? throw new OpusException(errorCode) : *decoder;
+            OpusDecoder* decoder = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode* errorCode);
+            return *errorCode != OpusErrorCode.Ok ? throw new OpusException(*errorCode) : *decoder;
         }
 
         /// <returns></returns>
@@ -32,13 +32,13 @@ namespace DSharpPlus.VoiceLink.Opus
             }
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, byte*, int, int)"/>
-        public unsafe int Decode(ReadOnlySpan<byte> data, ref Span<byte> pcm, int frameSize, bool decodeFec)
+        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, short*, int, int)"/>
+        public unsafe int Decode(ReadOnlySpan<byte> data, ref Span<short> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
             fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
-            fixed (byte* pcmPointer = pcm)
+            fixed (short* pcmPointer = pcm)
             {
                 decodedLength = OpusNativeMethods.Decode(pinned, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
             }
@@ -54,13 +54,13 @@ namespace DSharpPlus.VoiceLink.Opus
             return decodedLength;
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, byte*, int, int)"/>
-        public unsafe int DecodeFloat(ReadOnlySpan<byte> data, ref Span<byte> pcm, int frameSize, bool decodeFec)
+        /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, float*, int, int)"/>
+        public unsafe int DecodeFloat(ReadOnlySpan<byte> data, ref Span<float> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
             fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
-            fixed (byte* pcmPointer = pcm)
+            fixed (float* pcmPointer = pcm)
             {
                 decodedLength = OpusNativeMethods.DecodeFloat(pinned, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
             }
