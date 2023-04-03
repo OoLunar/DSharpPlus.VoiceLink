@@ -120,8 +120,8 @@ jobs:
                 cd builds/msvc/vs2019
                 msbuild libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m
                 cd ../../../
-                rm "${{ github.workspace }}/libs/libsodium/sodium.dll"
-                mv "bin/x64/Release/v142/dyn/sodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
+                rm "${{ github.workspace }}/libs/libsodium/libsodium.dll"
+                mv "bin/x64/Release/v142/dynamic/libsodium.dll" "${{ github.workspace }}/libs/libsodium/libsodium.dll"
             - name: "Commit Sodium"
               uses: EndBug/add-and-commit@v9
               with:
