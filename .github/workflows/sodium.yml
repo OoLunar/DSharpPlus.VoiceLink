@@ -107,13 +107,13 @@ jobs:
                 cd builds/msvc/vs2019
                 msbuild libsodium.sln /p:Configuration=StaticRelease /p:Platform=x64 /m
                 cd ../../../
-                ls "bin/x64/Release/v142/static"
+                rm "${{ github.workspace }}/libs/libsodium/libsodium.lib"
                 mv "bin/x64/Release/v142/static/libsodium.lib" "${{ github.workspace }}/libs/libsodium/sodium.dll"
             - name: "Commit Sodium"
               uses: EndBug/add-and-commit@v9
               with:
                 add: "libs/libsodium/"
                 default_author: github_actions
-                message: Update sodium.dll to ${{ env.SODIUM_VERSION }}
+                message: Update libsodium.lib to ${{ env.SODIUM_VERSION }}
                 pull: '--rebase --autostash'
                 push: true
