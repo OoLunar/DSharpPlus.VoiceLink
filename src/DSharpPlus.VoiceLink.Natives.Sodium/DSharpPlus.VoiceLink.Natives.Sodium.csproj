@@ -11,9 +11,7 @@
     <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="../../libs/libsodium">
-      <Pack>true</Pack>
-      <PackagePath>lib/$(TargetFramework)</PackagePath>
-    </Content>
+    <None Include="../../LICENSE" Pack="true" PackagePath="" />
+    <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
   </ItemGroup>
 </Project>
