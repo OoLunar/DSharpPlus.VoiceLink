@@ -106,6 +106,7 @@ jobs:
                 git checkout ${{ env.SODIUM_VERSION }}
                 cd builds/msvc/vs2019
                 msbuild libsodium.sln /p:Configuration=StaticRelease /p:Platform=x64 /m
+                cd ../../../
                 ls "bin/x64/Release/v142/static"
                 mv "bin/x64/Release/v142/static/libsodium.lib" "${{ github.workspace }}/libs/libsodium/sodium.dll"
             - name: "Commit Sodium"
