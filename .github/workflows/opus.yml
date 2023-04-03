@@ -70,15 +70,16 @@ jobs:
           make -j`nproc`
           REAL_FILE=$(readlink -f .libs/libopus.dylib)
           mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus.dylib"
-      - name: Build for MacOS Arm
-        run: |
-          cd libs/opus
-          git clean -fdx
-          ./autogen.sh
-          ./configure --host=arm-apple-darwin20 --target=arm-apple-darwin20 CFLAGS='-O2' CXXFLAGS='-O2'
-          make -j`nproc`
-          REAL_FILE=$(readlink -f .libs/libopus.dylib)
-          mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus-arm64.dylib"
+      # I'm unable to build Sodium for MacOS Arm, so I'm disabling this for now
+      #- name: Build for MacOS Arm
+      #  run: |
+      #    cd libs/opus
+      #    git clean -fdx
+      #    ./autogen.sh
+      #    ./configure --host=arm-apple-darwin20 --target=arm-apple-darwin20 CFLAGS='-O2' CXXFLAGS='-O2'
+      #    make -j`nproc`
+      #    REAL_FILE=$(readlink -f .libs/libopus.dylib)
+      #    mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus-arm64.dylib"
       - name: "Commit Opus"
         uses: EndBug/add-and-commit@v9
         with:
