@@ -48,59 +48,10 @@ jobs:
 #                pull: '--rebase --autostash'
 #                push: true
 #
-    build-mac:
-        name: Build Sodium for MacOS x64/Arm
-        runs-on: macos-latest
-        #needs: build-linux
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v3
-              with:
-                submodules: recursive
-            - name: Checkout Sodium
-              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
-            - name: Get Sodium latest version
-              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
-            - name: Build for MacOS x64
-              run: |
-                cd libs/sodium
-                git checkout ${{ env.SODIUM_VERSION }}
-                brew install libtool autoconf automake
-                ./autogen.sh -s
-                ./configure --disable-dependency-tracking --enable-minimal
-                make -j`nproc`
-                make check
-                ls -lsah src/libsodium/.libs/
-                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
-                mkdir -p "${{ github.workspace }}/libs/libsodium/"
-                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium.dylib"
-            - name: Build for MacOS Arm
-              run: |
-                cd libs/sodium
-                git checkout ${{ env.SODIUM_VERSION }}
-                brew install libtool autoconf automake
-                export LDFLAGS='--specs=nosys.specs'
-                ./autogen.sh -s
-                ./configure --disable-dependency-tracking --enable-minimal --host=arm-none-eabi
-                make -j`nproc`
-                make check
-                ls -lsah src/libsodium/.libs/
-                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
-                mkdir -p "${{ github.workspace }}/libs/libsodium/"
-                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium-arm64.dylib"
-            - name: "Commit Sodium"
-              uses: EndBug/add-and-commit@v9
-              with:
-                add: "libs/libsodium/"
-                default_author: github_actions
-                message: Update libsodium.dylib to ${{ env.SODIUM_VERSION }}
-                pull: '--rebase --autostash'
-                push: true
-#
-#    build-windows:
-#        name: Build Sodium for Windows x64
-#        runs-on: windows-latest
-#        #needs: build-mac
+#    build-mac:
+#        name: Build Sodium for MacOS x64/Arm
+#        runs-on: macos-latest
+#        #needs: build-linux
 #        steps:
 #            - name: Checkout
 #              uses: actions/checkout@v3
@@ -109,25 +60,73 @@ jobs:
 #            - name: Checkout Sodium
 #              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
 #            - name: Get Sodium latest version
-#              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
-#            - name: Set up MSBuild
-#              uses: microsoft/setup-msbuild@v1.3.1
-#              with:
-#                msbuild-architecture: x64
-#            - name: Build for Windows x64
+#              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
+#            - name: Build for MacOS x64
 #              run: |
 #                cd libs/sodium
 #                git checkout ${{ env.SODIUM_VERSION }}
-#                cd builds/msvc/vs2019
-#                msbuild libsodium.sln /p:Configuration=SharedRelease /p:Platform=x64 /m
-#                cd ../../../
-#                rm "${{ github.workspace }}/libs/libsodium/libsodium.dll"
-#                mv "bin/x64/Release/v142/shared/libsodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
+#                brew install libtool autoconf automake
+#                ./autogen.sh -s
+#                ./configure --disable-dependency-tracking --enable-minimal
+#                make -j`nproc`
+#                make check
+#                ls -lsah src/libsodium/.libs/
+#                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
+#                mkdir -p "${{ github.workspace }}/libs/libsodium/"
+#                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium.dylib"
+#            - name: Build for MacOS Arm
+#              run: |
+#                cd libs/sodium
+#                git clean -fdx
+#                export LDFLAGS='--specs=nosys.specs'
+#                ./autogen.sh -s
+#                ./configure --disable-dependency-tracking --enable-minimal --host=arm-none-eabi
+#                make -j`nproc`
+#                make check
+#                ls -lsah src/libsodium/.libs/
+#                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
+#                mkdir -p "${{ github.workspace }}/libs/libsodium/"
+#                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium-arm64.dylib"
 #            - name: "Commit Sodium"
 #              uses: EndBug/add-and-commit@v9
 #              with:
 #                add: "libs/libsodium/"
 #                default_author: github_actions
-#                message: Update libsodium.lib to ${{ env.SODIUM_VERSION }}
+#                message: Update libsodium.dylib and libsodium-arm64 to ${{ env.SODIUM_VERSION }}
 #                pull: '--rebase --autostash'
 #                push: true
+#
+    build-windows:
+        name: Build Sodium for Windows x64
+        runs-on: windows-latest
+        #needs: build-mac
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v3
+              with:
+                submodules: recursive
+            - name: Checkout Sodium
+              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
+            - name: Get Sodium latest version
+              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
+            - name: Set up MSBuild
+              uses: microsoft/setup-msbuild@v1.3.1
+              with:
+                msbuild-architecture: x64
+            - name: Build for Windows x64
+              run: |
+                cd libs/sodium
+                git checkout ${{ env.SODIUM_VERSION }}
+                cd builds/msvc/vs2019
+                msbuild libsodium.sln /p:Configuration=SharedRelease /p:Platform=x64 /m
+                cd ../../../
+                rm "${{ github.workspace }}/libs/libsodium/sodium.dll"
+                mv "bin/x64/Release/v142/shared/sodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
+            - name: "Commit Sodium"
+              uses: EndBug/add-and-commit@v9
+              with:
+                add: "libs/libsodium/"
+                default_author: github_actions
+                message: Update libsodium.lib to ${{ env.SODIUM_VERSION }}
+                pull: '--rebase --autostash'
+                push: true
