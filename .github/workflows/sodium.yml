@@ -51,7 +51,6 @@ jobs:
     build-mac:
         name: Build Sodium for MacOS x64
         runs-on: macos-latest
-        needs: build-linux
         steps:
             - name: Checkout
               uses: actions/checkout@v3
@@ -105,7 +104,6 @@ jobs:
     build-windows:
         name: Build Sodium for Windows x64
         runs-on: windows-latest
-        needs: build-mac
         steps:
             - name: Checkout
               uses: actions/checkout@v3

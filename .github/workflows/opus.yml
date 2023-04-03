@@ -49,7 +49,6 @@ jobs:
 
   build-macos:
     name: Build Opus for MacOS x64
-    needs: build-linux
     runs-on: macos-latest
     steps:
       - name: Checkout
@@ -91,7 +90,6 @@ jobs:
 
   build-windows:
     name: Build Opus for Windows x64
-    needs: build-macos
     runs-on: windows-latest
     steps:
       - name: Checkout
