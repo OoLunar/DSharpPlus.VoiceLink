@@ -95,7 +95,8 @@ jobs:
               run: |
                 cd libs/sodium
                 git checkout ${{ env.SODIUM_VERSION }}
-                dist-build/msys2-win64.sh
+                cd builds/msvc/vs2022
+                msbuild libsodium.sln /p:Configuration=Release /p:Platform=x64 /m
                 ls src/libsodium/.libs/
                 mv "src/libsodium/.libs/sodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
             - name: "Commit Sodium"
