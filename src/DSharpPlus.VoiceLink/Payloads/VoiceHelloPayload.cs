@@ -6,5 +6,5 @@ namespace DSharpPlus.VoiceLink.Payloads
     ///
     /// </summary>
     /// <param name="HeartbeatInterval"></param>
-    public sealed record VoiceHelloPayload([property: JsonProperty("heartbeat_interval")] int HeartbeatInterval) { }
+    public sealed record VoiceHelloPayload([property: JsonProperty("heartbeat_interval")] int HeartbeatInterval);
 }

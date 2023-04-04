@@ -12,6 +12,7 @@ namespace DSharpPlus.VoiceLink.Commands
     public sealed record VoiceSpeakingCommand(
         [property: JsonProperty("speaking")] VoiceSpeakingIndicators Speaking,
         [property: JsonProperty("delay")] int Delay,
-        [property: JsonProperty("ssrc")] uint SSRC)
-    { }
+        [property: JsonProperty("ssrc")] uint SSRC,
+        [property: JsonProperty("user_id")] ulong UserId
+    );
 }

@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
-using System.IO;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -57,7 +56,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
             DiscordClient client = new(new()
             {
                 Token = Environment.GetEnvironmentVariable("DISCORD_TOKEN"),
-                Intents = (DiscordIntents)3276799,
+                Intents = DiscordIntents.All,
                 LoggerFactory = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
             });
 
@@ -79,20 +78,18 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                     throw new InvalidOperationException("DISCORD_CHANNEL environment variable is not set or is incorrect.");
                 }
 
-                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.UserDeafened);
-                await connection.IdleUntilReadyAsync();
-
-                byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead(Environment.GetEnvironmentVariable("VOICE_FILE") ?? throw new InvalidOperationException("Voice file not set."))).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
-
-                // Advance every 4096 bytes
-                int currentPos = 0;
-                while (currentPos < audio.Length)
-                {
-                    int length = Math.Min(4096, audio.Length - currentPos);
-                    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(length));
-                    connection.AudioPipe.Advance(length);
-                    currentPos += length;
-                }
+                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.None);
+                //byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead(Environment.GetEnvironmentVariable("VOICE_FILE") ?? throw new InvalidOperationException("Voice file not set."))).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
+                //
+                //// Advance every 4096 bytes
+                //int currentPos = 0;
+                //while (currentPos < audio.Length)
+                //{
+                //    int length = Math.Min(4096, audio.Length - currentPos);
+                //    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(length));
+                //    connection.AudioPipe.Advance(length);
+                //    currentPos += length;
+                //}
             };
 
             await client.ConnectAsync();

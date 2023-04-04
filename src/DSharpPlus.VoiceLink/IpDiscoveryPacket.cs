@@ -16,14 +16,16 @@ namespace DSharpPlus.VoiceLink
 
         public static implicit operator byte[](DiscordIPDiscovery ipDiscovery)
         {
-            byte[] addressBytes = Encoding.UTF8.GetBytes(ipDiscovery.Address + "\0");
+            byte[] addressBytes = Encoding.UTF8.GetBytes(ipDiscovery.Address);
             Span<byte> ipDiscoverySpan = stackalloc byte[74];
 
-            BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan[0..2], ipDiscovery.Type);
-            BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan[2..4], (ushort)(6 + addressBytes.Length));
+            BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan[0..2], 1);
+            BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan[2..4], 70);
             BinaryPrimitives.WriteUInt32BigEndian(ipDiscoverySpan[4..8], ipDiscovery.SSRC);
-            addressBytes.CopyTo(ipDiscoverySpan[8..(8 + addressBytes.Length)]);
-            BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan.Slice(addressBytes.Length + 2, 2), ipDiscovery.Port);
+
+            // TODO: Implement this correctly
+            //addressBytes.CopyTo(ipDiscoverySpan[8..(8 + addressBytes.Length)]);
+            //BinaryPrimitives.WriteUInt16BigEndian(ipDiscoverySpan.Slice(addressBytes.Length + 2, 2), ipDiscovery.Port);
 
             return ipDiscoverySpan.ToArray();
         }

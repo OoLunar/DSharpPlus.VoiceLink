@@ -11,6 +11,6 @@ namespace DSharpPlus.VoiceLink.Commands
     public sealed record DiscordVoiceResumingCommand(
         [property: JsonProperty("server_id")] ulong ServerId,
         [property: JsonProperty("session_id")] string SessionId,
-        [property: JsonProperty("token")] string Token)
-    { }
+        [property: JsonProperty("token")] string Token
+    );
 }

@@ -13,6 +13,6 @@ namespace DSharpPlus.VoiceLink.Commands
         [property: JsonProperty("server_id")] ulong ServerId,
         [property: JsonProperty("user_id")] ulong UserId,
         [property: JsonProperty("session_id")] string SessionId,
-        [property: JsonProperty("token")] string Token)
-    { }
+        [property: JsonProperty("token")] string Token
+    );
 }
