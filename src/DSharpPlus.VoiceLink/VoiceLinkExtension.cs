@@ -3,11 +3,15 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using DSharpPlus.AsyncEvents;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Net.Abstractions;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
+using DSharpPlus.VoiceLink.EventArgs;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace DSharpPlus.VoiceLink
 {
@@ -16,8 +20,28 @@ namespace DSharpPlus.VoiceLink
         public VoiceLinkConfiguration Configuration { get; init; }
         public IReadOnlyDictionary<ulong, VoiceLinkConnection> Connections => _connections;
         internal readonly ConcurrentDictionary<ulong, VoiceLinkConnection> _connections = new();
+        private readonly ILogger<VoiceLinkExtension> _logger;
 
-        public VoiceLinkExtension(VoiceLinkConfiguration configuration) => Configuration = configuration;
+        public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionCreated { add => _connectionCreated.Register(value); remove => _connectionCreated.Unregister(value); }
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionCreated = new("VOICELINK_CONNECTION_CREATED", EverythingWentWrongErrorHandler);
+
+        public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionDestroyed { add => _connectionDestroyed.Register(value); remove => _connectionDestroyed.Unregister(value); }
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionDestroyed = new("VOICELINK_CONNECTION_DESTROYED", EverythingWentWrongErrorHandler);
+
+        public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserEventArgs> UserConnected { add => _userConnected.Register(value); remove => _userConnected.Unregister(value); }
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userConnected = new("VOICELINK_USER_CONNECTED", EverythingWentWrongErrorHandler);
+
+        public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserSpeakingEventArgs> UserSpeaking { add => _userSpeaking.Register(value); remove => _userSpeaking.Unregister(value); }
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserSpeakingEventArgs> _userSpeaking = new("VOICELINK_USER_SPEAKING", EverythingWentWrongErrorHandler);
+
+        public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserEventArgs> UserDisconnected { add => _userDisconnected.Register(value); remove => _userDisconnected.Unregister(value); }
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userDisconnected = new("VOICELINK_USER_DISCONNECTED", EverythingWentWrongErrorHandler);
+
+        public VoiceLinkExtension(VoiceLinkConfiguration configuration)
+        {
+            Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+            _logger = configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
+        }
 
         protected override void Setup(DiscordClient client)
         {
@@ -31,8 +55,8 @@ namespace DSharpPlus.VoiceLink
             }
 
             Client = client;
-            Client.VoiceStateUpdated += VoiceStateUpdateEventHandler;
-            Client.VoiceServerUpdated += VoiceServerUpdateEventHandler;
+            Client.VoiceStateUpdated += VoiceStateUpdateEventHandlerAsync;
+            Client.VoiceServerUpdated += VoiceServerUpdateEventHandlerAsync;
         }
 
         public override void Dispose() => Parallel.ForEachAsync(_connections.Values, CancellationToken.None, async (connection, cancellationToken) => await connection.DisconnectAsync()).GetAwaiter().GetResult();
@@ -97,11 +121,11 @@ namespace DSharpPlus.VoiceLink
             // > library must properly wait for both events before continuing. The first will contain a new key, session_id, and the second will provide
             // > voice server information we can use to establish a new voice connection:
             // As such, we have pre-emptively created event handlers for both events, and wait for both to be received before continuing.
-            //await connection.IdleUntilReadyAsync();
+            await connection.IdleUntilReadyAsync();
             return connection;
         }
 
-        private Task VoiceStateUpdateEventHandler(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
+        private async Task VoiceStateUpdateEventHandlerAsync(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -114,16 +138,14 @@ namespace DSharpPlus.VoiceLink
             else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection))
             {
                 connection._voiceStateUpdateEventArgs = eventArgs;
-                if (connection._voiceServerUpdateEventArgs is not null)
+                if (connection._voiceServerUpdateEventArgs is not null && connection.ConnectionState is ConnectionState.None)
                 {
-                    return connection.ConnectAsync();
+                    await connection.ConnectAsync();
                 }
             }
-
-            return Task.CompletedTask;
         }
 
-        private Task VoiceServerUpdateEventHandler(DiscordClient client, VoiceServerUpdateEventArgs eventArgs)
+        private async Task VoiceServerUpdateEventHandlerAsync(DiscordClient client, VoiceServerUpdateEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -136,13 +158,21 @@ namespace DSharpPlus.VoiceLink
             else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection))
             {
                 connection._voiceServerUpdateEventArgs = eventArgs;
-                if (connection._voiceStateUpdateEventArgs is not null)
+                if (connection._voiceStateUpdateEventArgs is not null && connection.ConnectionState is ConnectionState.None)
                 {
-                    return connection.ConnectAsync();
+                    await connection.ConnectAsync();
                 }
             }
-
-            return Task.CompletedTask;
         }
+
+        /// <summary>
+        /// The event handler used to log all unhandled exceptions, usually from when <see cref="_commandErrored"/> itself errors.
+        /// </summary>
+        /// <param name="asyncEvent">The event that errored.</param>
+        /// <param name="error">The error that occurred.</param>
+        /// <param name="handler">The handler/method that errored.</param>
+        /// <param name="sender">The extension.</param>
+        /// <param name="eventArgs">The event arguments passed to <paramref name="handler"/>.</param>
+        private static void EverythingWentWrongErrorHandler<TArgs>(AsyncEvent<VoiceLinkExtension, TArgs> asyncEvent, Exception error, AsyncEventHandler<VoiceLinkExtension, TArgs> handler, VoiceLinkExtension sender, TArgs eventArgs) where TArgs : AsyncEventArgs => sender._logger.LogError(error, "Event handler '{Method}' for event {AsyncEvent} threw an unhandled exception.", handler.Method, asyncEvent.Name);
     }
 }

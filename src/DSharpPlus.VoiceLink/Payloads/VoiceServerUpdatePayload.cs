@@ -11,6 +11,6 @@ namespace DSharpPlus.VoiceLink.Payloads
     public sealed record DiscordVoiceServerUpdatePayload(
         [property: JsonProperty("token")] string Token,
         [property: JsonProperty("guild_id")] ulong GuildId,
-        [property: JsonProperty("endpoint")] string? Endpoint)
-    { }
+        [property: JsonProperty("endpoint")] string? Endpoint
+    );
 }

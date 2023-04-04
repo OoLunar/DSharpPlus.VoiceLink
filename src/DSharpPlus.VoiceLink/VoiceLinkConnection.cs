@@ -62,7 +62,7 @@ namespace DSharpPlus.VoiceLink
 
         public Task IdleUntilReadyAsync() => _voiceStateUpdateTcs.Task;
 
-        public Task ConnectAsync()
+        public async Task ConnectAsync()
         {
             // Setup endpoint
             if (_voiceServerUpdateEventArgs?.Endpoint is null)
@@ -87,7 +87,6 @@ namespace DSharpPlus.VoiceLink
 
             // Connect to endpoint
             _webSocketClient = Extension.Configuration.WebSocketClientFactory(Extension.Configuration.Proxy);
-            _webSocketClient.Connected += ConnectedAsync;
             _webSocketClient.Disconnected += DisconnectedAsync;
             _webSocketClient.ExceptionThrown += ExceptionThrownAsync;
             _webSocketClient.MessageReceived += MessageReceivedAsync;
@@ -99,7 +98,10 @@ namespace DSharpPlus.VoiceLink
                 Port = endpointPort,
                 Query = $"v=4&encoding=json"
             }.Uri;
-            return _webSocketClient.ConnectAsync(endpointUri);
+
+            _logger.LogDebug("Connection {GuildId}: Connecting to {EndpointUri}", Guild.Id, endpointUri);
+            await _webSocketClient.ConnectAsync(endpointUri);
+            _logger.LogDebug("Connection {GuildId}: Connected to {EndpointUri}", Guild.Id, endpointUri);
         }
 
         public async Task DisconnectAsync()
@@ -109,6 +111,7 @@ namespace DSharpPlus.VoiceLink
             _voiceServerUpdateEventArgs = null;
             _voiceStateUpdateEventArgs = null;
             _voiceStateUpdateTcs = new();
+            _heartbeatQueue.Clear();
             Extension._connections.TryRemove(Channel.Id, out _);
 
             if (_webSocketClient is not null)
@@ -164,7 +167,7 @@ namespace DSharpPlus.VoiceLink
             await IdleUntilReadyAsync();
         }
 
-        public async Task ResumeAsync()
+        private async Task ResumeAsync()
         {
             _logger.LogDebug("Connection {GuildId}: Attempting to resume...", Guild.Id);
             ConnectionState = ConnectionState.Resuming;
@@ -172,25 +175,19 @@ namespace DSharpPlus.VoiceLink
             await _webSocketClient.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Resume, new DiscordVoiceResumingCommand(_voiceServerUpdateEventArgs!.Guild.Id, _voiceStateUpdateEventArgs!.SessionId, _voiceServerUpdateEventArgs.VoiceToken))));
         }
 
-        public Task ConnectedAsync(IWebSocketClient webSocketClient, SocketEventArgs eventArgs)
-        {
-            _logger.LogDebug("Connection {GuildId}: Connected to endpoint {Endpoint}", Guild.Id, _endpointUri);
-            return Task.CompletedTask;
-        }
-
-        public Task DisconnectedAsync(IWebSocketClient webSocketClient, SocketCloseEventArgs eventArgs)
+        private Task DisconnectedAsync(IWebSocketClient webSocketClient, SocketCloseEventArgs eventArgs)
         {
             _logger.LogDebug("Connection {GuildId}: Disconnected from endpoint {Endpoint}. Error code {Code}: {Message}", Guild.Id, _endpointUri, eventArgs.CloseCode, eventArgs.CloseMessage);
             return Task.CompletedTask;
         }
 
-        public Task ExceptionThrownAsync(IWebSocketClient webSocketClient, SocketErrorEventArgs eventArgs)
+        private Task ExceptionThrownAsync(IWebSocketClient webSocketClient, SocketErrorEventArgs eventArgs)
         {
             _logger.LogError(eventArgs.Exception, "Connection {GuildId}: Exception thrown", Guild.Id);
             return Task.CompletedTask;
         }
 
-        public Task MessageReceivedAsync(IWebSocketClient webSocketClient, SocketMessageEventArgs eventArgs)
+        private Task MessageReceivedAsync(IWebSocketClient webSocketClient, SocketMessageEventArgs eventArgs)
         {
             if (eventArgs is not SocketTextMessageEventArgs textMessageEventArgs)
             {
@@ -207,28 +204,34 @@ namespace DSharpPlus.VoiceLink
             _logger.LogTrace("Connection {GuildId}: Received payload {Payload}", Guild.Id, payload);
             switch (payload.OpCode)
             {
-                case VoiceOpCode.Hello when ConnectionState is ConnectionState.None:
+                case VoiceOpCode.Hello:
                     ConnectionState = ConnectionState.Identify;
                     return SendIdentifyAsync(((JObject)payload.Data!).ToDiscordObject<VoiceHelloPayload>());
-                case VoiceOpCode.Ready when ConnectionState is ConnectionState.Identify:
+                case VoiceOpCode.Ready:
                     ConnectionState = ConnectionState.SelectProtocol;
                     return SendSelectProtocolAsync(((JObject)payload.Data!).ToDiscordObject<VoiceReadyPayload>());
-                case VoiceOpCode.SessionDescription when ConnectionState is ConnectionState.SelectProtocol:
+                case VoiceOpCode.SessionDescription:
                     ConnectionState = ConnectionState.Heartbeating;
                     _voiceStateUpdateTcs.SetResult();
-                    break;
-                case VoiceOpCode.Resumed when ConnectionState is ConnectionState.Resuming:
+                    return Task.CompletedTask;
+                case VoiceOpCode.Resumed:
                     ConnectionState = ConnectionState.Heartbeating;
-
-                    break;
-                case VoiceOpCode.HeartbeatAck when ConnectionState is ConnectionState.Heartbeating:
+                    return Task.CompletedTask;
+                case VoiceOpCode.HeartbeatAck:
                     return HandleHeartbeat((long)payload.Data!);
+                case VoiceOpCode.Speaking:
+                    return UserSpeakingAsync(((JObject)payload.Data!).ToDiscordObject<VoiceSpeakingCommand>());
+                case VoiceOpCode.ClientConnected:
+                    return ClientConnectedAsync(((JObject)payload.Data!).ToDiscordObject<VoiceUserJoinPayload>());
+                case VoiceOpCode.ClientDisconnect:
+                    return ClientDisconnectAsync((ulong)((JObject)payload.Data!)["user_id"]!);
+                default:
+                    _logger.LogWarning("Connection {GuildId}: Received unknown/unimplemented payload. Please update VoiceLink or open an issue about this! Payload: {Payload}", Guild.Id, payload);
+                    return Task.CompletedTask;
             }
-
-            return Task.CompletedTask;
         }
 
-        public void StartHeartbeat(VoiceHelloPayload helloPayload) => Task.Run(async () =>
+        private async Task StartHeartbeatAsync(VoiceHelloPayload helloPayload)
         {
             _logger.LogDebug("Connection {GuildId}: Starting heartbeat with a {HeartbeatInterval:N0}ms timer.", Guild.Id, helloPayload.HeartbeatInterval);
             PeriodicTimer heartbeatTimer = new(TimeSpan.FromMilliseconds(helloPayload.HeartbeatInterval));
@@ -237,7 +240,7 @@ namespace DSharpPlus.VoiceLink
                 if (_heartbeatQueue.Count > Extension.Configuration.MaxHeartbeatQueueSize)
                 {
                     _logger.LogError("Connection {GuildId}: Heartbeat queue is too large ({MaxHeartbeat}), disconnecting and reconnecting.", Guild.Id, Extension.Configuration.MaxHeartbeatQueueSize);
-                    await DisconnectAsync();
+                    await ReconnectAsync();
                     return;
                 }
 
@@ -246,17 +249,16 @@ namespace DSharpPlus.VoiceLink
                 _logger.LogTrace("Connection {GuildId}: Sending heartbeat {UnixTimestamp}", Guild.Id, unixTimestamp);
                 await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Heartbeat, unixTimestamp)));
             }
-        });
+        }
 
-        public Task HandleHeartbeat(long heartbeat)
+        private Task HandleHeartbeat(long heartbeat)
         {
             if (_heartbeatQueue.TryDequeue(out long unixTimestamp))
             {
-                _logger.LogTrace("Connection {GuildId}: Received heartbeat {UnixTimestamp}", Guild.Id, unixTimestamp);
                 if (heartbeat != unixTimestamp)
                 {
                     _logger.LogError("Connection {GuildId}: Heartbeat mismatch, disconnecting and reconnecting.", Guild.Id);
-                    return DisconnectAsync();
+                    return ReconnectAsync();
                 }
 
                 Ping = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - unixTimestamp;
@@ -264,15 +266,15 @@ namespace DSharpPlus.VoiceLink
             else
             {
                 _logger.LogError("Connection {GuildId}: Heartbeat queue is empty, disconnecting and reconnecting.", Guild.Id);
-                return DisconnectAsync();
+                return ReconnectAsync();
             }
 
             return Task.CompletedTask;
         }
 
-        public Task SendIdentifyAsync(VoiceHelloPayload helloPayload)
+        private Task SendIdentifyAsync(VoiceHelloPayload helloPayload)
         {
-            StartHeartbeat(helloPayload);
+            _ = StartHeartbeatAsync(helloPayload);
             return _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Identify, new VoiceIdentifyCommand(
                 Channel.Guild.Id,
                 User.Id,
@@ -281,7 +283,7 @@ namespace DSharpPlus.VoiceLink
             ))));
         }
 
-        public async Task SendSelectProtocolAsync(VoiceReadyPayload voiceReadyPayload)
+        private async Task SendSelectProtocolAsync(VoiceReadyPayload voiceReadyPayload)
         {
             // Ip discovery here
             _udpClient = new(voiceReadyPayload.Ip, voiceReadyPayload.Port);
@@ -291,6 +293,8 @@ namespace DSharpPlus.VoiceLink
 
             DiscordIPDiscovery reply = (await _udpClient.ReceiveAsync()).Buffer.AsSpan();
             _logger.LogDebug("Connection {GuildId}: Received IP discovery reply {Reply}", Guild.Id, reply);
+
+
             await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.SelectProtocol, new VoiceSelectProtocolCommand(
                 "udp",
                 new VoiceSelectProtocolCommandData(
@@ -299,6 +303,39 @@ namespace DSharpPlus.VoiceLink
                     "xsalsa20_poly1305"
                 )
             ))));
+        }
+
+        private async Task UserSpeakingAsync(VoiceSpeakingCommand voiceSpeakingCommand)
+        {
+            if (!_currentUsers.TryGetValue(voiceSpeakingCommand.UserId, out VoiceLinkUser? user))
+            {
+                user = new VoiceLinkUser(await Extension.Client.GetUserAsync(voiceSpeakingCommand.UserId), this, voiceSpeakingCommand.SSRC);
+                _currentUsers.TryAdd(voiceSpeakingCommand.UserId, user);
+            }
+
+            user.VoiceIndication = voiceSpeakingCommand.Speaking;
+            user.Ssrc = voiceSpeakingCommand.SSRC;
+
+            // Fire and forget the event, as we don't need to wait for the event handlers to complete.
+            // This also prevents the blocking of the voice gateway.
+            _ = Extension._userSpeaking.InvokeAsync(Extension, new(this, voiceSpeakingCommand, user));
+        }
+
+        private async Task ClientConnectedAsync(VoiceUserJoinPayload userJoinPayload)
+        {
+            VoiceLinkUser voiceUser = new(await Extension.Client.GetUserAsync(userJoinPayload.UserId), this, userJoinPayload.Ssrc);
+            _currentUsers.TryAdd(userJoinPayload.UserId, voiceUser);
+            _ = Extension._userConnected.InvokeAsync(Extension, new(this, voiceUser));
+        }
+
+        private async Task ClientDisconnectAsync(ulong userId)
+        {
+            if (!_currentUsers.TryRemove(userId, out VoiceLinkUser? voiceUser))
+            {
+                voiceUser = new VoiceLinkUser(await Extension.Client.GetUserAsync(userId), this, 0);
+            }
+
+            _ = Extension._userDisconnected.InvokeAsync(Extension, new(this, voiceUser));
         }
     }
 }

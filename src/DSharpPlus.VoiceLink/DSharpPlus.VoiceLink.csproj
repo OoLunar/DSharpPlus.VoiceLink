@@ -16,7 +16,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../LICENSE" Pack="true" PackagePath="" />
-    <PackageReference Include="DSharpPlus" Version="4.4.0" />
+    <ProjectReference Include="../../libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
     <PackageReference Include="Geralt" Version="2.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="7.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="7.0.0" />

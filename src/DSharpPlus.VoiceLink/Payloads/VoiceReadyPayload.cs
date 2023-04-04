@@ -9,6 +9,6 @@ namespace DSharpPlus.VoiceLink.Payloads
         [property: JsonProperty("ip")] string Ip,
         [property: JsonProperty("port")] ushort Port,
         [property: JsonProperty("modes")] IReadOnlyList<string> Modes,
-        [property: JsonProperty("heartbeat_interval"), Obsolete("HeartbeatInterval here is an erroneous field and should be ignored. The correct heartbeat_interval value comes from the Hello payload.")] int HeartbeatInterval)
-    { }
+        [property: JsonProperty("heartbeat_interval"), Obsolete("HeartbeatInterval here is an erroneous field and should be ignored. The correct heartbeat_interval value comes from the Hello payload.")] int HeartbeatInterval
+    );
 }

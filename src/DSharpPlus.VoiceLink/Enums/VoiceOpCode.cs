@@ -12,6 +12,7 @@ namespace DSharpPlus.VoiceLink.Enums
         Resume = 7,
         Hello = 8,
         Resumed = 9,
+        ClientConnected = 12,
         ClientDisconnect = 13
     }
 }

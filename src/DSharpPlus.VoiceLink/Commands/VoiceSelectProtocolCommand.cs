@@ -10,8 +10,8 @@ namespace DSharpPlus.VoiceLink.Commands
     /// <returns></returns>
     public sealed record VoiceSelectProtocolCommand(
         [property: JsonProperty("protocol")] string Protocol,
-        [property: JsonProperty("data")] VoiceSelectProtocolCommandData Data)
-    { }
+        [property: JsonProperty("data")] VoiceSelectProtocolCommandData Data
+    );
 
     /// <summary>
     ///
@@ -22,6 +22,6 @@ namespace DSharpPlus.VoiceLink.Commands
     public sealed record VoiceSelectProtocolCommandData(
         [property: JsonProperty("address")] string Address,
         [property: JsonProperty("port")] ushort Port,
-        [property: JsonProperty("mode")] string Mode)
-    { }
+        [property: JsonProperty("mode")] string Mode
+    );
 }

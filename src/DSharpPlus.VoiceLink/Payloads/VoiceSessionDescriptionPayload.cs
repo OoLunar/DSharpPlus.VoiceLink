@@ -10,6 +10,6 @@ namespace DSharpPlus.VoiceLink.Payloads
     /// <param name="SecretKey"></param>
     public sealed record VoiceSessionDescriptionPayload(
         [property: JsonProperty("mode")] string Mode,
-        [property: JsonProperty("secret_key")] IReadOnlyList<byte> SecretKey)
-    { }
+        [property: JsonProperty("secret_key")] IReadOnlyList<byte> SecretKey
+    );
 }
