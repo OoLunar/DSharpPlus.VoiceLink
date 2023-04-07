@@ -45,7 +45,7 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="maxDataBytes">Size of the allocated memory for the output payload. This may be used to impose an upper limit on the instant bitrate, but should not be used as the only bitrate control. Use OPUS_SET_BITRATE to control the bitrate.</param>
         /// <returns>The length of the encoded packet (in bytes) on success or a negative error code (see Error codes) on failure.</returns>
         [LibraryImport("opus", EntryPoint = "opus_encode")]
-        public static unsafe partial int Encode(OpusEncoder* encoder, short* pcm, int frameSize, byte* data, int maxDataBytes);
+        public static unsafe partial int Encode(OpusEncoder* encoder, byte* pcm, int frameSize, byte* data, int maxDataBytes);
 
         /// <summary>
         /// Encodes an Opus frame from floating point input.

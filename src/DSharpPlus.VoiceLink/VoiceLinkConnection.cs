@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.IO.Pipelines;
 using System.Net.Sockets;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using DSharpPlus.Entities;
@@ -13,7 +15,9 @@ using DSharpPlus.Net.Serialization;
 using DSharpPlus.Net.WebSocket;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
+using DSharpPlus.VoiceLink.Opus;
 using DSharpPlus.VoiceLink.Payloads;
+using DSharpPlus.VoiceLink.Sodium;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
@@ -28,6 +32,22 @@ namespace DSharpPlus.VoiceLink
         public DiscordUser User { get; init; }
         public VoiceState VoiceState { get; internal set; }
         public ConnectionState ConnectionState { get; private set; }
+        public EncryptionMode EncryptionMode { get; private set; }
+        public OpusEncoder OpusEncoder { get; private set; } = OpusEncoder.Create(OpusSampleRate.Opus48000Hz, 2, OpusApplication.Audio);
+        public OpusApplication OpusApplication
+        {
+            get => _opusApplication; private set
+            {
+                _opusApplication = value;
+                OpusErrorCode errorCode = OpusEncoder.Control(OpusControlRequest.SetApplication, (int)value);
+                if (errorCode != OpusErrorCode.Ok)
+                {
+                    throw new OpusException(errorCode);
+                }
+            }
+        }
+
+        private OpusApplication _opusApplication;
 
         /// <summary>
         /// The ping is milliseconds between the client sending a heartbeat and receiving a heartbeat ack.
@@ -37,19 +57,25 @@ namespace DSharpPlus.VoiceLink
         public DiscordGuild Guild => Channel.Guild;
         public DiscordMember? Member => User as DiscordMember;
         public IReadOnlyDictionary<ulong, VoiceLinkUser> CurrentUsers => _currentUsers;
-        public PipeWriter AudioPipe => _audioPipe.Writer;
+        public PipeWriter? AudioPipe => _audioPipe?.Writer;
 
         internal VoiceStateUpdateEventArgs? _voiceStateUpdateEventArgs { get; set; }
         internal VoiceServerUpdateEventArgs? _voiceServerUpdateEventArgs { get; set; }
         internal TaskCompletionSource _voiceStateUpdateTcs { get; set; } = new();
         internal IWebSocketClient? _webSocketClient { get; set; }
 
-        private readonly Pipe _audioPipe = new();
+        private readonly Pipe? _audioPipe = new();
         private readonly ConcurrentQueue<long> _heartbeatQueue = new();
         private readonly ILogger<VoiceLinkConnection> _logger;
         private readonly ConcurrentDictionary<ulong, VoiceLinkUser> _currentUsers = new();
         private Uri? _endpointUri { get; set; }
         private UdpClient? _udpClient { get; set; }
+
+        private byte[] _secretKey { get; set; }
+        private ushort _sequence { get; set; }
+        private uint _timestamp { get; set; }
+        private uint _ssrc { get; set; }
+        private int _incrementalNumber { get; set; }
 
         public VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, DiscordUser user, VoiceState voiceState)
         {
@@ -58,6 +84,7 @@ namespace DSharpPlus.VoiceLink
             User = user;
             VoiceState = voiceState;
             _logger = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
+            _secretKey = new byte[32];
         }
 
         public Task IdleUntilReadyAsync() => _voiceStateUpdateTcs.Task;
@@ -167,6 +194,12 @@ namespace DSharpPlus.VoiceLink
             await IdleUntilReadyAsync();
         }
 
+        public async Task StartSpeakingAsync()
+        {
+            await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Speaking, new VoiceSpeakingCommand(VoiceSpeakingIndicators.Microphone, 0, _ssrc, Extension.Client.CurrentUser.Id))));
+            await SendVoicePacketAsync();
+        }
+
         private async Task ResumeAsync()
         {
             _logger.LogDebug("Connection {GuildId}: Attempting to resume...", Guild.Id);
@@ -212,6 +245,8 @@ namespace DSharpPlus.VoiceLink
                     return SendSelectProtocolAsync(((JObject)payload.Data!).ToDiscordObject<VoiceReadyPayload>());
                 case VoiceOpCode.SessionDescription:
                     ConnectionState = ConnectionState.Heartbeating;
+                    EncryptionMode = EncryptionMode.XSalsa20Poly1305;
+                    _secretKey = ((JObject)payload.Data!)["secret_key"]!.ToObject<byte[]>()!;
                     _voiceStateUpdateTcs.SetResult();
                     return Task.CompletedTask;
                 case VoiceOpCode.Resumed:
@@ -294,7 +329,6 @@ namespace DSharpPlus.VoiceLink
             DiscordIPDiscovery reply = (await _udpClient.ReceiveAsync()).Buffer.AsSpan();
             _logger.LogDebug("Connection {GuildId}: Received IP discovery reply {Reply}", Guild.Id, reply);
 
-
             await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.SelectProtocol, new VoiceSelectProtocolCommand(
                 "udp",
                 new VoiceSelectProtocolCommandData(
@@ -336,6 +370,110 @@ namespace DSharpPlus.VoiceLink
             }
 
             _ = Extension._userDisconnected.InvokeAsync(Extension, new(this, voiceUser));
+        }
+
+        [SuppressMessage("Style", "IDE0047", Justification = "Apparently PEMDAS isn't well remembered.")]
+        private async Task SendVoicePacketAsync()
+        {
+            unsafe int EncodeOpusPacket(ReadOnlySpan<byte> pcm, int sampleDuration, Span<byte> target) => OpusEncoder.Encode(pcm, sampleDuration, ref target);
+
+            ReadOnlySpan<byte> GetIncrementalInteger()
+            {
+                byte[] array = BitConverter.GetBytes(_incrementalNumber);
+                if (BitConverter.IsLittleEndian)
+                {
+                    Array.Reverse(array);
+                }
+
+                _incrementalNumber = unchecked(_incrementalNumber + 1);
+                return array;
+            }
+
+            // Referenced from VoiceNext:
+            // internal int CalculateMaximumFrameSize() => 120 * (this.SampleRate / 1000);
+            // internal int SampleCountToSampleSize(int sampleCount) => sampleCount * this.ChannelCount * 2 /* sizeof(int16_t) */;
+            // audioFormat.SampleCountToSampleSize(audioFormat.CalculateMaximumFrameSize())
+            // (120 * (this.SampleRate / 1000)) * this.ChannelCount * 2
+            // Because the Opus data must be sent as 48,000hz and in 2 channels (stereo) we can hardcode the variables with their proper values
+            // (120 * (48000 / 1000)) * 2 * 2
+            // 120 * 48 * 4
+            // 120 * 192
+            // 23040
+            // Where did the 120 or the 1000 come from? No clue. Hopefully they can stay hardcoded though.
+            const int maximumOpusSize = 23040;
+            // Additionally add 12 to 23040 as the Rtp header (12 bytes long) will always be included in the packet.
+            const int maximumPacketSize = maximumOpusSize + 12;
+
+            // The buffer we use for the Opus data.
+            Memory<byte> opusPacket = new(new byte[maximumOpusSize]);
+
+            // The buffer we use for the Rtp header and the *encrypted* Opus data.
+            // The switch case is us factoring in the nonce size, which differs per encryption mode.
+            Memory<byte> completePacket = new(new byte[EncryptionMode switch
+            {
+                // The Rtp header is the nonce.
+                EncryptionMode.XSalsa20Poly1305 => maximumPacketSize,
+
+                // A 32bit int (4 bytes) incremented per... packet(?)
+                EncryptionMode.XSalsa20Poly1305Lite => maximumPacketSize + 4,
+
+                // 24 (securely) randomly generated bytes
+                EncryptionMode.XSalsa20Poly1305Suffix => maximumPacketSize + SodiumXSalsa20Poly1305.NonceSize,
+
+                // What the fuck happened here, Discord sending us undocumented encryption types? They would never.
+                _ => throw new NotImplementedException($"Unknown encryption mode selected: {EncryptionMode}")
+            }]);
+
+            ReadResult result = default;
+            while (!result.IsCompleted && _audioPipe is not null)
+            {
+                result = await _audioPipe.Reader.ReadAsync();
+                if (result.IsCanceled || result.Buffer.IsEmpty)
+                {
+                    await Task.Delay(50);
+                    continue;
+                }
+
+                foreach (ReadOnlyMemory<byte> buffer in result.Buffer)
+                {
+                    /*
+                        - `frameSize = buffer.Length * 4`
+                        - `OpusEncoder.Encode` expects `framesize` as an `int`
+                        This means `buffer.Length` will always need to be less than 1/4 of int.MaxValue
+                    */
+                    const int maxBufferLength = int.MaxValue / 4;
+                    int currentBufferPosition = 0;
+                    int nextBufferPosition = Math.Min(buffer.Length, maxBufferLength);
+                    while (currentBufferPosition != buffer.Length)
+                    {
+                        // Encode Opus to the opusPacket buffer.
+                        EncodeOpusPacket(buffer.Slice(currentBufferPosition, nextBufferPosition).Span, nextBufferPosition * 4, opusPacket.Span[12..]);
+
+                        // Encode the RTP header to the packet.
+                        RtpUtilities.EncodeHeader(_sequence, _timestamp, _ssrc, completePacket.Span[..12]);
+
+                        // Encode Opus via Sodium and append it to the packet.
+                        SodiumXSalsa20Poly1305.Encrypt(opusPacket.Span, new Span<byte>(_secretKey), EncryptionMode switch
+                        {
+                            EncryptionMode.XSalsa20Poly1305 => completePacket.Span[..12],
+                            EncryptionMode.XSalsa20Poly1305Lite => GetIncrementalInteger(),
+                            EncryptionMode.XSalsa20Poly1305Suffix => RandomNumberGenerator.GetBytes(24),
+                            _ => throw new NotImplementedException($"Unknown encryption mode selected: {EncryptionMode}")
+                        }, completePacket.Span[12..]);
+
+                        // Send the packet to the voice gateway.
+                        await _udpClient!.SendAsync(completePacket.ToArray(), completePacket.Length);
+
+                        // Increment the sequence and timestamp.
+                        _sequence = unchecked((ushort)(_sequence + 1));
+                        _timestamp = unchecked((uint)(_timestamp + (nextBufferPosition * 4)));
+
+                        // Increment the buffer position and calculate the next buffer position.
+                        currentBufferPosition += nextBufferPosition;
+                        nextBufferPosition = Math.Min(buffer.Length - currentBufferPosition, maxBufferLength);
+                    }
+                }
+            }
         }
     }
 }
