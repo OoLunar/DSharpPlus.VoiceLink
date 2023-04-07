@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
+using System.IO.Pipelines;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -79,17 +81,10 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 }
 
                 VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.None);
-                //byte[] audio = Matroska.MatroskaSerializer.Deserialize(File.OpenRead(Environment.GetEnvironmentVariable("VOICE_FILE") ?? throw new InvalidOperationException("Voice file not set."))).Segment.Tracks!.TrackEntries[0].Audio!.Void!;
-                //
-                //// Advance every 4096 bytes
-                //int currentPos = 0;
-                //while (currentPos < audio.Length)
-                //{
-                //    int length = Math.Min(4096, audio.Length - currentPos);
-                //    audio.AsSpan(currentPos, length).CopyTo(connection.AudioPipe.GetSpan(length));
-                //    connection.AudioPipe.Advance(length);
-                //    currentPos += length;
-                //}
+                using FileStream rawPcm = File.OpenRead("./test/output.pcm");
+                _ = connection.StartSpeakingAsync();
+                await rawPcm.CopyToAsync(connection.AudioPipe!);
+                await connection.AudioPipe!.CompleteAsync();
             };
 
             await client.ConnectAsync();
