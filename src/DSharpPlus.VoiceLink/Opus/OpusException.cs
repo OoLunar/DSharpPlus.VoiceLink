@@ -26,14 +26,14 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <returns>A human-readable error message.</returns>
         public static string GetErrorMessage(OpusErrorCode errorCode) => errorCode switch
         {
-            OpusErrorCode.Ok => "No error.",
-            OpusErrorCode.BadArg => "One or more invalid/out of range arguments.",
-            OpusErrorCode.BufferTooSmall => "Not enough bytes allocated in the buffer.",
-            OpusErrorCode.InternalError => "An internal error was detected.",
-            OpusErrorCode.InvalidPacket => "The compressed data passed is corrupted.",
-            OpusErrorCode.Unimplemented => "Invalid/unsupported request number.",
-            OpusErrorCode.InvalidState => "An encoder or decoder structure is invalid or already freed.",
-            OpusErrorCode.AllocFail => "Memory allocation has failed.",
+            OpusErrorCode.Ok => "Error 0: No error.",
+            OpusErrorCode.BadArg => "Error -1: One or more invalid/out of range arguments.",
+            OpusErrorCode.BufferTooSmall => "Error -2: Not enough bytes allocated in the buffer.",
+            OpusErrorCode.InternalError => "Error -3: An internal error was detected.",
+            OpusErrorCode.InvalidPacket => "Error -4: The compressed data passed is corrupted.",
+            OpusErrorCode.Unimplemented => "Error -5: Invalid/unsupported request number.",
+            OpusErrorCode.InvalidState => "Error -6: An encoder or decoder structure is invalid or already freed.",
+            OpusErrorCode.AllocFail => "Error -7: Memory allocation has failed.",
             _ => "Unknown error."
         };
     }
