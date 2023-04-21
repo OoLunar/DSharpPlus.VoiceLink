@@ -4,14 +4,6 @@ namespace DSharpPlus.VoiceLink.Sodium
 {
     internal static partial class SodiumNativeMethods
     {
-        static SodiumNativeMethods()
-        {
-            if (Init() == -1)
-            {
-                throw new SodiumException("Sodium initialization failed.");
-            }
-        }
-
         [LibraryImport("libsodium", EntryPoint = "sodium_init")]
         public static unsafe partial int Init();
 

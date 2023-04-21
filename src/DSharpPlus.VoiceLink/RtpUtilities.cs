@@ -1,6 +1,5 @@
 using System;
 using System.Buffers.Binary;
-using DSharpPlus.VoiceLink.Enums;
 
 namespace DSharpPlus.VoiceLink
 {
@@ -9,8 +8,16 @@ namespace DSharpPlus.VoiceLink
     /// </summary>
     public static class RtpUtilities
     {
-        public const byte VersionFlags = 0x80;
+        public const byte VersionWithExtension = 0x90;
+        public const byte Version = 0x80;
         public const byte PayloadType = 0x78;
+
+        /// <summary>
+        /// Determines if the given buffer contains a valid RTP header.
+        /// </summary>
+        /// <param name="source">The data to reference.</param>
+        /// <returns>Whether the data contains a valid RTP header.</returns>
+        public static bool IsRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && (source[0] == Version || source[0] == VersionWithExtension) && source[1] == PayloadType;
 
         /// <summary>
         /// Encodes a RTP header into the given buffer.
@@ -27,7 +34,8 @@ namespace DSharpPlus.VoiceLink
                 throw new ArgumentException("The target buffer must have a minimum of 12 bytes for the RTP header to fit.", nameof(target));
             }
 
-            target[0] = VersionFlags;
+            target.Clear();
+            target[0] = Version;
             target[1] = PayloadType;
             BinaryPrimitives.WriteUInt16BigEndian(target[2..4], sequence);
             BinaryPrimitives.WriteUInt32BigEndian(target[4..8], timestamp);
@@ -48,55 +56,18 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentException("The source buffer must have a minimum of 12 bytes for it to be a RTP header.", nameof(source));
             }
-            else if (source[0] != VersionFlags)
+            else if (source[0] != Version && source[0] != VersionWithExtension)
             {
                 throw new ArgumentException("The source buffer contains an unknown RTP header version.", nameof(source));
             }
             else if (source[1] != PayloadType)
             {
-                throw new ArgumentException("The source buffer contains an unknown RTP payload type.", nameof(source));
+                throw new ArgumentException("The source buffer contains an unknown RTP header type.", nameof(source));
             }
 
             sequence = BinaryPrimitives.ReadUInt16BigEndian(source[2..4]);
             timestamp = BinaryPrimitives.ReadUInt32BigEndian(source[4..8]);
             ssrc = BinaryPrimitives.ReadUInt32BigEndian(source[8..12]);
         }
-
-        /// <summary>
-        /// Determines if the given buffer contains a valid RTP header.
-        /// </summary>
-        /// <param name="source">The data to reference.</param>
-        /// <returns>Whether the data contains a valid RTP header.</returns>
-        public static bool IsRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && source[0] == VersionFlags && source[1] == PayloadType;
-
-        /// <summary>
-        /// Calculates the size of the RTP packet based on the encrypted length and the encryption mode. The encryption mode determines the size of the nonce and appends it to the encrypted length.
-        /// </summary>
-        /// <param name="encryptedLength">The length of the encrypted audio.</param>
-        /// <param name="encryptionMode">The encryption mode to be used.</param>
-        /// <returns>The total size of the packet, that is <paramref name="encryptedLength"/> + the nonce size of <paramref name="encryptionMode"/>.</returns>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="encryptionMode"/> is not a valid <see cref="EncryptionMode"/>.</exception>
-        public static int CalculatePacketSize(int encryptedLength, EncryptionMode encryptionMode) => encryptionMode switch
-        {
-            EncryptionMode.XSalsa20Poly1305 => encryptedLength + 12,
-            EncryptionMode.XSalsa20Poly1305Suffix => encryptedLength + 16,
-            EncryptionMode.XSalsa20Poly1305Lite => encryptedLength + 4,
-            _ => throw new ArgumentOutOfRangeException(nameof(encryptionMode), encryptionMode, null)
-        };
-
-        /// <summary>
-        /// Removes the RTP header from the packet, returning the data.
-        /// </summary>
-        /// <param name="source">The complete packet to reference.</param>
-        /// <param name="data">The encrypted audio.</param>
-        /// <param name="encryptionMode">The encryption mode used when encrypting the data.</param>
-        /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="encryptionMode"/> is not a valid <see cref="EncryptionMode"/>.</exception>
-        public static void SlicePacketData(ReadOnlySpan<byte> source, out ReadOnlySpan<byte> data, EncryptionMode encryptionMode) => data = encryptionMode switch
-        {
-            EncryptionMode.XSalsa20Poly1305 => source[12..],
-            EncryptionMode.XSalsa20Poly1305Suffix => source[12..^4],
-            EncryptionMode.XSalsa20Poly1305Lite => source[12..^12],
-            _ => throw new ArgumentOutOfRangeException(nameof(encryptionMode), encryptionMode, null)
-        };
     }
 }

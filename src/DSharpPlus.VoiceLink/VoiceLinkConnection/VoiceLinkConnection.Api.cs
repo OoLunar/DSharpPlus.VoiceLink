@@ -35,6 +35,7 @@ namespace DSharpPlus.VoiceLink
             VoiceState = voiceState;
             _logger = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
             _secretKey = new byte[32];
+            VoiceLinkUser = null!;
         }
 
         public Task IdleUntilReadyAsync() => _voiceStateUpdateTcs.Task;
@@ -81,20 +82,22 @@ namespace DSharpPlus.VoiceLink
             _logger.LogDebug("Connection {GuildId}: Connected to {EndpointUri}", Guild.Id, endpointUri);
         }
 
-        public async Task DisconnectAsync()
+        public async Task DisconnectAsync(bool reconnect = false)
         {
             _logger.LogDebug("Connection {GuildId}: Disconnecting", Guild.Id);
             ConnectionState = ConnectionState.None;
+            _currentUsers.Clear();
             _voiceServerUpdateEventArgs = null;
             _voiceStateUpdateEventArgs = null;
             _voiceStateUpdateTcs = new();
             _heartbeatQueue.Clear();
-            Extension._connections.TryRemove(Channel.Id, out _);
+            _ = Extension._connections.TryRemove(Channel.Id, out _);
 
             if (_webSocketClient is not null)
             {
                 await _webSocketClient.DisconnectAsync();
             }
+            _webSocketClient = null;
 
 #pragma warning disable CS0618 // Type or member is obsolete
             await Extension.Client.SendPayloadAsync(GatewayOpCode.VoiceStateUpdate, new VoiceLinkStateCommand(
@@ -117,8 +120,8 @@ namespace DSharpPlus.VoiceLink
 
         public async Task ReconnectAsync()
         {
-            _logger.LogDebug("Connection {GuildId}: Reconnecting", Guild.Id);
             await DisconnectAsync();
+            _logger.LogDebug("Connection {GuildId}: Reconnecting", Guild.Id);
             Extension._connections.AddOrUpdate(Guild.Id, this, (key, value) => this);
 
 #pragma warning disable CS0618 // Type or member is obsolete
@@ -146,7 +149,7 @@ namespace DSharpPlus.VoiceLink
 
         public async Task StartSpeakingAsync()
         {
-            await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Speaking, new VoiceSpeakingCommand(VoiceSpeakingIndicators.Microphone, 0, _ssrc, Extension.Client.CurrentUser.Id))));
+            await _webSocketClient!.SendMessageAsync(DiscordJson.SerializeObject(new VoiceGatewayDispatch(VoiceOpCode.Speaking, new VoiceSpeakingCommand(VoiceSpeakingIndicators.Microphone, 0, VoiceLinkUser.Ssrc, Extension.Client.CurrentUser.Id))));
             await SendVoicePacketAsync();
         }
     }

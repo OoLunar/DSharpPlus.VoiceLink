@@ -29,6 +29,10 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new InvalidOperationException("The VoiceLink extension is already initialized.");
             }
+            else if (!client.Intents.HasIntent(DiscordIntents.GuildVoiceStates))
+            {
+                throw new InvalidOperationException("The VoiceLink extension requires the GuildVoiceStates intent.");
+            }
 
             configuration ??= new();
             ServiceDescriptor? currentLoggingImplementation = configuration.ServiceCollection.FirstOrDefault(service => service.ServiceType == typeof(ILoggerFactory));
@@ -89,19 +93,19 @@ namespace DSharpPlus.VoiceLink
                 throw new ArgumentNullException(nameof(shardedClient));
             }
 
-            await shardedClient.InitializeShardsAsync();
+            _ = await shardedClient.InitializeShardsAsync();
             configuration ??= new();
 
             ServiceDescriptor? currentLoggingImplementation = configuration.ServiceCollection.FirstOrDefault(service => service.ServiceType == typeof(ILoggerFactory));
             if (currentLoggingImplementation is null)
             {
                 Console.WriteLine($"No logging system set, using a {nameof(NullLoggerFactory)}. This is not recommended, please provide a logging system so you can see errors.");
-                configuration.ServiceCollection.AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
+                _ = configuration.ServiceCollection.AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
             }
             else if (currentLoggingImplementation.ServiceType == _shardedLoggerFactoryType && shardedClient.Logger.GetType() == _shardedLoggerFactoryType)
             {
                 Console.WriteLine($"ShardedLoggerFactory detected, using {nameof(NullLoggerFactory)} instead. VoiceLink is NOT compatible with the default logging system that DSharpPlus provides!");
-                configuration.ServiceCollection
+                _ = configuration.ServiceCollection
                     .RemoveAll<ILoggerFactory>().RemoveAll(typeof(ILogger<>)) // Remove the default logging implementation, if set
                     .AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
             }

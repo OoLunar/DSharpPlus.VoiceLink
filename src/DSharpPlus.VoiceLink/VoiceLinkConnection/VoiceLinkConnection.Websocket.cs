@@ -69,8 +69,22 @@ namespace DSharpPlus.VoiceLink
                     return DiscordSendSelectProtocolAsync(((JObject)payload.Data!).ToDiscordObject<VoiceReadyPayload>());
                 case VoiceOpCode.SessionDescription:
                     ConnectionState = ConnectionState.Heartbeating;
-                    EncryptionMode = EncryptionMode.XSalsa20Poly1305;
                     _secretKey = ((JObject)payload.Data!)["secret_key"]!.ToObject<byte[]>()!;
+                    _ = Task.Run(async () =>
+                    {
+                        while (true)
+                        {
+                            if (_udpClient!.Available != 0)
+                            {
+                                UdpReceiveResult result = await _udpClient!.ReceiveAsync();
+                                ProcessPacket(result);
+                            }
+                            else
+                            {
+                                await Task.Delay(50);
+                            }
+                        }
+                    });
                     _voiceStateUpdateTcs.SetResult();
                     return Task.CompletedTask;
                 case VoiceOpCode.Resumed:
@@ -81,7 +95,7 @@ namespace DSharpPlus.VoiceLink
                 case VoiceOpCode.Speaking:
                     return DiscordUserSpeakingAsync(((JObject)payload.Data!).ToDiscordObject<VoiceSpeakingCommand>());
                 case VoiceOpCode.ClientConnected:
-                    return ClientConnectedAsync(((JObject)payload.Data!).ToDiscordObject<VoiceUserJoinPayload>());
+                    return ClientConnectedAsync((ulong)((JObject)payload.Data!)["user_id"]!);
                 case VoiceOpCode.ClientDisconnect:
                     return ClientDisconnectAsync((ulong)((JObject)payload.Data!)["user_id"]!);
                 default:
@@ -144,6 +158,10 @@ namespace DSharpPlus.VoiceLink
 
         private async Task DiscordSendSelectProtocolAsync(VoiceReadyPayload voiceReadyPayload)
         {
+            // We've received our ssrc, let's put it into the _currentUsers dictionary
+            VoiceLinkUser = new VoiceLinkUser(this, voiceReadyPayload.Ssrc, Guild.CurrentMember);
+            _currentUsers.TryAdd(voiceReadyPayload.Ssrc, VoiceLinkUser);
+
             // Ip discovery here
             _udpClient = new(voiceReadyPayload.Ip, voiceReadyPayload.Port);
 
@@ -158,7 +176,7 @@ namespace DSharpPlus.VoiceLink
                 new VoiceSelectProtocolCommandData(
                     reply.Address,
                     reply.Port,
-                    "xsalsa20_poly1305"
+                    VoiceEncrypter.Name
                 )
             ))));
         }
@@ -175,7 +193,7 @@ namespace DSharpPlus.VoiceLink
         {
             if (!_currentUsers.TryGetValue(voiceSpeakingCommand.SSRC, out VoiceLinkUser? user))
             {
-                user = new VoiceLinkUser(await Extension.Client.GetUserAsync(voiceSpeakingCommand.UserId), this, voiceSpeakingCommand.SSRC);
+                user = new VoiceLinkUser(this, voiceSpeakingCommand.SSRC, await Extension.Client.GetUserAsync(voiceSpeakingCommand.UserId));
                 _currentUsers.TryAdd(voiceSpeakingCommand.SSRC, user);
             }
 
@@ -186,17 +204,16 @@ namespace DSharpPlus.VoiceLink
             _ = Extension._userSpeaking.InvokeAsync(Extension, new(this, voiceSpeakingCommand, user));
         }
 
-        private async Task ClientConnectedAsync(VoiceUserJoinPayload userJoinPayload)
+        private async Task ClientConnectedAsync(ulong userId)
         {
-            VoiceLinkUser voiceUser = new(await Extension.Client.GetUserAsync(userJoinPayload.UserId), this, userJoinPayload.Ssrc);
-            _currentUsers.TryAdd(userJoinPayload.Ssrc, voiceUser);
+            VoiceLinkUser voiceUser = new(this, 0, await Extension.Client.GetUserAsync(userId));
             _ = Extension._userConnected.InvokeAsync(Extension, new(this, voiceUser));
         }
 
         private async Task ClientDisconnectAsync(ulong userId)
         {
-            VoiceLinkUser voiceUser = _currentUsers.Values.FirstOrDefault(voiceUser => voiceUser.User.Id == userId) ?? new VoiceLinkUser(await Extension.Client.GetUserAsync(userId), this, 0);
-            _currentUsers.TryRemove(voiceUser.Ssrc, out _);
+            VoiceLinkUser voiceUser = _currentUsers.Values.FirstOrDefault(voiceUser => voiceUser.User?.Id == userId) ?? new VoiceLinkUser(this, 0, await Extension.Client.GetUserAsync(userId));
+            await voiceUser._audioPipe.Writer.CompleteAsync();
             _ = Extension._userDisconnected.InvokeAsync(Extension, new(this, voiceUser));
         }
     }

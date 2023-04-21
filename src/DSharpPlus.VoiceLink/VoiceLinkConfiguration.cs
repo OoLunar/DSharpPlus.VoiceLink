@@ -1,6 +1,7 @@
 using System;
 using System.Net;
 using DSharpPlus.Net.WebSocket;
+using DSharpPlus.VoiceLink.VoiceEncrypters;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace DSharpPlus.VoiceLink
@@ -20,5 +21,6 @@ namespace DSharpPlus.VoiceLink
         private WebSocketClientFactoryDelegate _webSocketClientFactory = WebSocketClient.CreateNew;
 
         public int MaxHeartbeatQueueSize { get; set; } = 5;
+        public IVoiceEncrypter VoiceEncrypter { get; set; } = new XSalsa20Poly1305();
     }
 }

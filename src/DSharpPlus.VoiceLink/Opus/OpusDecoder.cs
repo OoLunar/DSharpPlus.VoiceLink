@@ -13,7 +13,7 @@ namespace DSharpPlus.VoiceLink.Opus
         public static unsafe OpusDecoder Create(OpusSampleRate sampleRate, int channels)
         {
             OpusDecoder* decoder = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode* errorCode);
-            return *errorCode != OpusErrorCode.Ok ? throw new OpusException(*errorCode) : *decoder;
+            return (errorCode != default && *errorCode != OpusErrorCode.Ok) ? throw new OpusException(*errorCode) : *decoder;
         }
 
         /// <returns></returns>
@@ -77,12 +77,12 @@ namespace DSharpPlus.VoiceLink.Opus
         }
 
         /// <inheritdoc cref="OpusNativeMethods.DecoderControl(OpusDecoder*, OpusControlRequest, int)"/>
-        public unsafe void Control(OpusControlRequest control, int value)
+        public unsafe void Control(OpusControlRequest control, out int value)
         {
             OpusErrorCode errorCode;
             fixed (OpusDecoder* pinned = &this)
             {
-                errorCode = OpusNativeMethods.DecoderControl(pinned, control, value);
+                errorCode = OpusNativeMethods.DecoderControl(pinned, control, out value);
             }
 
             if (errorCode != OpusErrorCode.Ok)
