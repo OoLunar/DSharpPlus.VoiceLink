@@ -10,6 +10,7 @@ using DSharpPlus.Net.Abstractions;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.EventArgs;
+using DSharpPlus.VoiceLink.Sodium;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -41,6 +42,10 @@ namespace DSharpPlus.VoiceLink
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             _logger = configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
+            if (SodiumNativeMethods.Init() == -1)
+            {
+                throw new SodiumException("Sodium initialization failed.");
+            }
         }
 
         protected override void Setup(DiscordClient client)
@@ -74,6 +79,10 @@ namespace DSharpPlus.VoiceLink
             else if (channel.Guild is null)
             {
                 throw new ArgumentException("Channel must be a guild channel.", nameof(channel));
+            }
+            else if (voiceState.HasFlag(VoiceState.Speaking))
+            {
+                throw new ArgumentException("The voice state cannot be speaking when connecting.", nameof(voiceState));
             }
 
             Permissions botPermissions = channel.PermissionsFor(channel.Guild.CurrentMember);
@@ -135,10 +144,10 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentNullException(nameof(eventArgs));
             }
-            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection))
+            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection) && connection.ConnectionState is ConnectionState.None)
             {
                 connection._voiceStateUpdateEventArgs = eventArgs;
-                if (connection._voiceServerUpdateEventArgs is not null && connection.ConnectionState is ConnectionState.None)
+                if (connection._voiceServerUpdateEventArgs is not null)
                 {
                     await connection.ConnectAsync();
                 }
@@ -155,10 +164,10 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentNullException(nameof(eventArgs));
             }
-            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection))
+            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection) && connection.ConnectionState is ConnectionState.None)
             {
                 connection._voiceServerUpdateEventArgs = eventArgs;
-                if (connection._voiceStateUpdateEventArgs is not null && connection.ConnectionState is ConnectionState.None)
+                if (connection._voiceStateUpdateEventArgs is not null)
                 {
                     await connection.ConnectAsync();
                 }

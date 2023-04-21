@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.IO.Pipelines;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
@@ -67,6 +66,20 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 ServiceCollection = services
             });
 
+            voiceLinkExtension.UserConnected += (sender, e) =>
+            {
+                _ = Task.Run(async () =>
+                {
+                    FileStream userPcm = File.OpenWrite($"./test/{e.User.Id}.pcm");
+                    await e.VoiceUser.AudioPipe!.CopyToAsync(userPcm);
+                    await userPcm.FlushAsync();
+                    userPcm.Close();
+                    await userPcm.DisposeAsync();
+                });
+
+                return Task.CompletedTask;
+            };
+
             client.GuildDownloadCompleted += async (sender, e) =>
             {
                 if (!ulong.TryParse(Environment.GetEnvironmentVariable("DISCORD_GUILD"), out ulong guildId))
@@ -81,10 +94,10 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 }
 
                 VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.None);
-                using FileStream rawPcm = File.OpenRead("./test/output.pcm");
-                _ = connection.StartSpeakingAsync();
-                await rawPcm.CopyToAsync(connection.AudioPipe!);
-                await connection.AudioPipe!.CompleteAsync();
+                //using FileStream rawPcm = File.OpenRead("./test/output.pcm");
+                //_ = connection.StartSpeakingAsync();
+                //await rawPcm.CopyToAsync(connection.AudioPipe!);
+                //await connection.AudioPipe!.CompleteAsync();
             };
 
             await client.ConnectAsync();

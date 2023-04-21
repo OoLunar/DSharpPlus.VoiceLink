@@ -56,7 +56,7 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="decoder">Decoder state.</param>
         /// <param name="request">This and all remaining parameters should be replaced by one of the convenience macros in Generic CTLs or Decoder related CTLs.</param>
         [LibraryImport("opus", EntryPoint = "opus_decoder_ctl")]
-        public static unsafe partial OpusErrorCode DecoderControl(OpusDecoder* decoder, OpusControlRequest request, int value);
+        public static unsafe partial OpusErrorCode DecoderControl(OpusDecoder* decoder, OpusControlRequest request, out int value);
 
         /// <summary>
         /// Frees an OpusDecoder allocated by <see cref="DecoderCreate(OpusSampleRate, int, out OpusErrorCode)"/>.
