@@ -81,7 +81,7 @@ namespace DSharpPlus.VoiceLink
                 throw new ArgumentException("Channel must be a guild channel.", nameof(channel));
             }
             else if (voiceState.HasFlag(VoiceState.Speaking))
-            {
+            {   
                 throw new ArgumentException("The voice state cannot be speaking when connecting.", nameof(voiceState));
             }
 
