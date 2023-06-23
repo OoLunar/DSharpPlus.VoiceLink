@@ -21,7 +21,7 @@ namespace DSharpPlus.VoiceLink
         public VoiceState VoiceState { get; internal set; }
         public ConnectionState ConnectionState { get; private set; }
         public DiscordGuild Guild => Channel.Guild;
-        public DiscordMember? Member => User as DiscordMember;
+        public DiscordMember Member => (DiscordMember)User;
         public IReadOnlyDictionary<uint, VoiceLinkUser> CurrentUsers => _currentUsers;
 
         private readonly ConcurrentDictionary<uint, VoiceLinkUser> _currentUsers = new();
@@ -82,7 +82,7 @@ namespace DSharpPlus.VoiceLink
             _logger.LogDebug("Connection {GuildId}: Connected to {EndpointUri}", Guild.Id, endpointUri);
         }
 
-        public async Task DisconnectAsync(bool reconnect = false)
+        public async Task DisconnectAsync()
         {
             _logger.LogDebug("Connection {GuildId}: Disconnecting", Guild.Id);
             ConnectionState = ConnectionState.None;

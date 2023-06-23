@@ -72,6 +72,8 @@ namespace DSharpPlus.VoiceLink
                     _secretKey = ((JObject)payload.Data!)["secret_key"]!.ToObject<byte[]>()!;
                     _ = Task.Run(async () =>
                     {
+                        // TODO: Cancellation token
+                        // TODO: Extract to method
                         while (true)
                         {
                             if (_udpClient!.Available != 0)

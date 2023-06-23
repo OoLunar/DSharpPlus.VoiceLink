@@ -44,7 +44,6 @@ namespace DSharpPlus.VoiceLink
         [SuppressMessage("Style", "IDE0047", Justification = "Apparently PEMDAS isn't well remembered.")]
         private static int CalclulateMaxOutputSize(int sampleRate, int maxPacketDuration, int channels) => (sampleRate / 1000) * maxPacketDuration * channels;
 
-        [SuppressMessage("Style", "IDE0047", Justification = "Apparently PEMDAS isn't well remembered.")]
         private async Task SendVoicePacketAsync()
         {
             unsafe int EncodeOpusPacket(ReadOnlySpan<byte> pcm, int sampleDuration, Span<byte> target)
@@ -93,11 +92,13 @@ namespace DSharpPlus.VoiceLink
                 }
 
                 // Increment the sequence and timestamp.
+                // Unchecked to prevent stack overflow exceptions, since we intend to wrap around.
                 _sequence = unchecked((ushort)(_sequence + 1));
                 _timestamp = unchecked(_timestamp + 120);
 
-                // Send the packet to the voice gateway.
-                _ = await _udpClient!.SendAsync(completePacket.ToArray(), completePacket.Length);
+                // Trim the unused packet data and send the trimmed packet to the voice gateway.
+                Memory<byte> trimmedPacket = completePacket.Trim(byte.MinValue);
+                _ = await _udpClient!.SendAsync(trimmedPacket.ToArray(), trimmedPacket.Length);
 
                 // Advance the pipe.
                 _audioPipe.Reader.AdvanceTo(result.Buffer.End);
@@ -124,39 +125,39 @@ namespace DSharpPlus.VoiceLink
             }
 
             // Check if there has been any packet loss.
-            //ushort packetLossCount = unchecked((ushort)(sequence - voiceLinkUser._lastSequence));
-            //if (packetLossCount > 0)
-            //{
-            //    _logger.LogWarning("Connection {GuildId}: User {UserId}, packet loss detected: {PacketLossCount} {PluralizedPacket} lost.", Guild.Id, voiceLinkUser.User.Id, packetLossCount, packetLossCount == 1 ? "packet" : "packets");
-            //
-            //    OpusDecoder decoder = voiceLinkUser._opusDecoder;
-            //    voiceLinkUser._opusDecoder.Control(OpusControlRequest.GetLastPacketDuration, out int lastPacketDuration);
-            //    while (packetLossCount-- > 0)
-            //    {
-            //        int decodedLength;
-            //        Span<short> fecPCM = new(new short[SampleCountToSampleSize(lastPacketDuration)]);
-            //        fixed (short* fecPCMPointer = fecPCM)
-            //        {
-            //            decodedLength = OpusNativeMethods.Decode((OpusDecoder*)Unsafe.AsPointer(ref decoder), null, 0, fecPCMPointer, lastPacketDuration, 1);
-            //        }
-            //
-            //        if (decodedLength < 0)
-            //        {
-            //            _logger.LogError("Connection {GuildId}: User {UserId}, failed to decode FEC packet: Error {ErrorCode}, {ErrorMessage}", Guild.Id, voiceLinkUser.User.Id, decodedLength, OpusException.GetErrorMessage((OpusErrorCode)decodedLength));
-            //            continue;
-            //        }
-            //
-            //        // Write the... fec... packet to the audio pipe.
-            //        // What does FEC stand for again?
-            //        // Forward Error Correction?
-            //        // No idea what I'm supposed to do with that.
-            //        voiceLinkUser._lastSequence = unchecked(voiceLinkUser._lastSequence += 1);
-            //        voiceLinkUser._audioPipe.Writer.Write(MemoryMarshal.Cast<short, byte>(fecPCM));
-            //        voiceLinkUser._audioPipe.Writer.Advance(decodedLength);
-            //    }
-            //}
+            ushort packetLossCount = unchecked((ushort)(sequence - voiceLinkUser._lastSequence));
+            if (packetLossCount > 0)
+            {
+                _logger.LogWarning("Connection {GuildId}: User {UserId}, packet loss detected. Total packets lost: {PacketLossCount}.", Guild.Id, voiceLinkUser.User?.Id, packetLossCount);
 
-            // TODO: Encryption
+                //OpusDecoder decoder = voiceLinkUser._opusDecoder;
+                //voiceLinkUser._opusDecoder.Control(OpusControlRequest.GetLastPacketDuration, out int lastPacketDuration);
+                //while (packetLossCount-- > 0)
+                //{
+                //    int decodedLength;
+                //    Span<short> fecPCM = new(new short[SampleCountToSampleSize(lastPacketDuration)]);
+                //    fixed (short* fecPCMPointer = fecPCM)
+                //    {
+                //        decodedLength = OpusNativeMethods.Decode((OpusDecoder*)Unsafe.AsPointer(ref decoder), null, 0, fecPCMPointer, lastPacketDuration, 1);
+                //    }
+                //
+                //    if (decodedLength < 0)
+                //    {
+                //        _logger.LogError("Connection {GuildId}: User {UserId}, failed to decode FEC packet: Error {ErrorCode}, {ErrorMessage}", Guild.Id, voiceLinkUser.User.Id, decodedLength, OpusException.GetErrorMessage((OpusErrorCode)decodedLength));
+                //        continue;
+                //    }
+                //
+                //    // Write the... fec... packet to the audio pipe.
+                //    // What does FEC stand for again?
+                //    // Forward Error Correction?
+                //    // No idea what I'm supposed to do with that.
+                //    voiceLinkUser._lastSequence = unchecked(voiceLinkUser._lastSequence += 1);
+                //    voiceLinkUser._audioPipe.Writer.Write(MemoryMarshal.Cast<short, byte>(fecPCM));
+                //    voiceLinkUser._audioPipe.Writer.Advance(decodedLength);
+                //}
+            }
+
+            // Decrypt the voice packet.
             Span<byte> opusAudio = new byte[VoiceEncrypter.GetDecryptedSize(result.Buffer.Length)];
             if (!VoiceEncrypter.Decrypt(voiceLinkUser, result.Buffer.AsSpan(0, opusAudio.Length), _secretKey, opusAudio))
             {
