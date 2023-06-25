@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Deps
-xbps-install -Syu
+xbps-install -Syu > /dev/null
 xbps-install -y ImageMagick yarn > /dev/null
 yarn global add svgo > /dev/null
 
@@ -9,10 +9,9 @@ yarn global add svgo > /dev/null
 regenerate()
 {
   echo "Generating assets for $1"
-  PUSH_COMMIT=1
 
   # Optimize the SVG file
-  svgo "$file"
+  svgo "$1"
 
   # Convert to PNG
   convert "$1" -size 1024x1024 "${1%.*}.png"
@@ -38,7 +37,7 @@ git config --global user.email "github-actions[bot]@users.noreply.github.com"
 git config --global user.name "github-actions[bot]"
 git add res > /dev/null
 git diff --exit-code > /dev/null
-if [ "$?" == "1" ]; then
+if [ $? = 1 ]; then
   git commit -m "[ci-skip] Regenerate resource files." > /dev/null
   git push > /dev/null
 else
