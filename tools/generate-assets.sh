@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Deps
-xbps-install -Sy ImageMagick yarn > /dev/null
+xbps-install -Syu
+xbps-install -y ImageMagick yarn > /dev/null
 yarn global add svgo > /dev/null
 
 # Functions
@@ -36,7 +37,7 @@ done
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
 git config --global user.name "github-actions[bot]"
 git add res > /dev/null
-git diff-index --quiet HEAD
+git diff --exit-code > /dev/null
 if [ "$?" == "1" ]; then
   git commit -m "[ci-skip] Regenerate resource files." > /dev/null
   git push > /dev/null
