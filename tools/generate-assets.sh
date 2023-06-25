@@ -36,8 +36,8 @@ done
 git config --global user.email "github-actions[bot]@users.noreply.github.com"
 git config --global user.name "github-actions[bot]"
 git add res > /dev/null
-git diff --exit-code > /dev/null
-if [ "$?" = "1" ]; then
+git diff-index --quiet HEAD
+if [ "$?" == "1" ]; then
   git commit -m "[ci-skip] Regenerate resource files." > /dev/null
   git push > /dev/null
 else
