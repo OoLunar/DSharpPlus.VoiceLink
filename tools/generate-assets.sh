@@ -11,7 +11,7 @@ regenerate()
   echo "Generating assets for $1"
 
   # Optimize the SVG file
-  svgo "$1"
+  svgo --multipass --quiet "$1"
 
   # Convert to PNG
   convert "$1" -size 1024x1024 "${1%.*}.png"

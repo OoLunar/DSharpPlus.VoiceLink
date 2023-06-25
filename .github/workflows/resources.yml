@@ -1,9 +1,12 @@
+name: Regenerate Resource Files
+
 on:
   push:
     paths:
+      - ".github/workflows/resources.yml"
       - "res/**"
       - "tools/generate-assets.sh"
-      - ".github/workflows/resources.yml"
+  workflow_dispatch:
 
 jobs:
   build-pr:
