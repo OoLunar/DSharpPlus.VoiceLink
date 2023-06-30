@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+  <metadata>
+    <contentFiles>
+      <files include="../../libs/libopus/*" pack="true" packagePath="natives/" copyToOutput="true" />
+    </contentFiles>
+  </metadata>
+  <files>
+    <file src="natives/*" target="" />
+  </files>
+</package>

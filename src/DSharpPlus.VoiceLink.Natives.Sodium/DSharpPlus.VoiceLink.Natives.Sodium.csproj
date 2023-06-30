@@ -12,6 +12,6 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="../../LICENSE" Pack="true" PackagePath="" />
-    <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
+    <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="natives/*" />
   </ItemGroup>
 </Project>
