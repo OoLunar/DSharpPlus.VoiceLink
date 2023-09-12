@@ -14,16 +14,11 @@ regenerate()
   svgo --multipass --quiet "$1"
 
   # Convert to PNG
-  convert "$1" -size 1024x1024 "${1%.*}.png"
+  convert -background none "$1" "${1%.*}.png"
 
   # Convert to ICO
   # https://stackoverflow.com/a/15104985
-  convert "$1" -bordercolor white -border 0 \
-    \( -clone 0 -resize 16x16 \) \
-    \( -clone 0 -resize 32x32 \) \
-    \( -clone 0 -resize 48x48 \) \
-    \( -clone 0 -resize 64x64 \) \
-    -delete 0 -alpha off -colors 256 "${1%.*}.ico"
+  convert -background transparent -define "icon:auto-resize=16,24,32,64,128,256" "$1" "${1%.*}.ico"
 }
 
 # Iterate over each file matching the pattern "*.svg" in the "res" directory
