@@ -1,17 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net7.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>OoLunar.DSharpPlus.VoiceLink.Natives.Opus</PackageId>
     <Description>Provides the dynamic library files for Opus.</Description>
-    <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
-    <Authors>OoLunar, InFTord, Aaron2550</Authors>
-    <PackageProjectUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</RepositoryUrl>
-    <RepositoryType>Git</RepositoryType>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../../LICENSE" Pack="true" PackagePath="" />
-    <Content Include="../../libs/libopus/*" Pack="true" PackagePath="natives/" />
+    <Content Include="../../libs/libopus/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
   </ItemGroup>
 </Project>
