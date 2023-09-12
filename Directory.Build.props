@@ -17,7 +17,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext, dsharpplus-voicelink</PackageTags>
-    <ProjectRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), "HyperSharp.sln"))</ProjectRoot>
+    <ProjectRoot>$([MSBuild]::GetDirectoryNameOfFileAbove($(MSBuildProjectDirectory), "DSharpPlus.VoiceLink.sln"))</ProjectRoot>
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <RepositoryUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</RepositoryUrl>

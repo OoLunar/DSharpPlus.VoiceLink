@@ -1,0 +1,7 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>OoLunar.DSharpPlus.VoiceLink</PackageId>
+    <Description>An updated voice extension for the DSharpPlus Discord library.</Description>
+    <IsPackable>true</IsPackable>
+  </PropertyGroup>
+</Project>

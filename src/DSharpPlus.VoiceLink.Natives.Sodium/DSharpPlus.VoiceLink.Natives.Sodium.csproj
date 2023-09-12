@@ -3,6 +3,7 @@
     <TargetFramework>netstandard2.0</TargetFramework>
     <PackageId>OoLunar.DSharpPlus.VoiceLink.Natives.Sodium</PackageId>
     <Description>Provides the dynamic library files for Sodium.</Description>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
