@@ -3,17 +3,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{32C4ABDE-4B33-429E-A048-E06E549F3052}"
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{07064B03-0982-4F3D-87E7-DA52C904BE8F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink", "src\DSharpPlus.VoiceLink\DSharpPlus.VoiceLink.csproj", "{B3E342C9-D754-48BD-BEB4-ED419446BE51}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink", "src\DSharpPlus.VoiceLink\DSharpPlus.VoiceLink.csproj", "{287A34CE-6FE2-42B2-B460-0AAF6AC03317}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink.Natives.Opus", "src\DSharpPlus.VoiceLink.Natives.Opus\DSharpPlus.VoiceLink.Natives.Opus.csproj", "{41948596-C173-4325-BB23-FFC02C4E2E21}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink.Natives.Opus", "src\DSharpPlus.VoiceLink.Natives.Opus\DSharpPlus.VoiceLink.Natives.Opus.csproj", "{6F08A753-F741-48D1-96FB-666F16199292}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink.Natives.Sodium", "src\DSharpPlus.VoiceLink.Natives.Sodium\DSharpPlus.VoiceLink.Natives.Sodium.csproj", "{126B6089-7E0C-413E-9F24-0C22540AFD9D}"
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "examples", "examples", "{527B51DB-E951-46E3-9579-9B7F5D46904E}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HelloWorld", "examples\HelloWorld\HelloWorld.csproj", "{A102BA92-E4A6-4F51-AAFC-838C50835AD8}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DSharpPlus.VoiceLink.Natives.Sodium", "src\DSharpPlus.VoiceLink.Natives.Sodium\DSharpPlus.VoiceLink.Natives.Sodium.csproj", "{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -24,27 +20,22 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{B3E342C9-D754-48BD-BEB4-ED419446BE51}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B3E342C9-D754-48BD-BEB4-ED419446BE51}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B3E342C9-D754-48BD-BEB4-ED419446BE51}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B3E342C9-D754-48BD-BEB4-ED419446BE51}.Release|Any CPU.Build.0 = Release|Any CPU
-		{41948596-C173-4325-BB23-FFC02C4E2E21}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{41948596-C173-4325-BB23-FFC02C4E2E21}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{41948596-C173-4325-BB23-FFC02C4E2E21}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{41948596-C173-4325-BB23-FFC02C4E2E21}.Release|Any CPU.Build.0 = Release|Any CPU
-		{126B6089-7E0C-413E-9F24-0C22540AFD9D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{126B6089-7E0C-413E-9F24-0C22540AFD9D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{126B6089-7E0C-413E-9F24-0C22540AFD9D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{126B6089-7E0C-413E-9F24-0C22540AFD9D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A102BA92-E4A6-4F51-AAFC-838C50835AD8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A102BA92-E4A6-4F51-AAFC-838C50835AD8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A102BA92-E4A6-4F51-AAFC-838C50835AD8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A102BA92-E4A6-4F51-AAFC-838C50835AD8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{287A34CE-6FE2-42B2-B460-0AAF6AC03317}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{287A34CE-6FE2-42B2-B460-0AAF6AC03317}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{287A34CE-6FE2-42B2-B460-0AAF6AC03317}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{287A34CE-6FE2-42B2-B460-0AAF6AC03317}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6F08A753-F741-48D1-96FB-666F16199292}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6F08A753-F741-48D1-96FB-666F16199292}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6F08A753-F741-48D1-96FB-666F16199292}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6F08A753-F741-48D1-96FB-666F16199292}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{B3E342C9-D754-48BD-BEB4-ED419446BE51} = {32C4ABDE-4B33-429E-A048-E06E549F3052}
-		{41948596-C173-4325-BB23-FFC02C4E2E21} = {32C4ABDE-4B33-429E-A048-E06E549F3052}
-		{126B6089-7E0C-413E-9F24-0C22540AFD9D} = {32C4ABDE-4B33-429E-A048-E06E549F3052}
-		{A102BA92-E4A6-4F51-AAFC-838C50835AD8} = {527B51DB-E951-46E3-9579-9B7F5D46904E}
+		{287A34CE-6FE2-42B2-B460-0AAF6AC03317} = {07064B03-0982-4F3D-87E7-DA52C904BE8F}
+		{6F08A753-F741-48D1-96FB-666F16199292} = {07064B03-0982-4F3D-87E7-DA52C904BE8F}
+		{D0AF2638-EDAE-46FC-BD6A-29EF7323CA4B} = {07064B03-0982-4F3D-87E7-DA52C904BE8F}
 	EndGlobalSection
 EndGlobal

@@ -1,6 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
+    <TargetFrameworks></TargetFrameworks>
     <TargetFramework>netstandard2.0</TargetFramework>
+    <Nullable>disable</Nullable>
     <PackageId>OoLunar.DSharpPlus.VoiceLink.Natives.Sodium</PackageId>
     <Description>Provides the dynamic library files for Sodium.</Description>
     <IsPackable>true</IsPackable>
