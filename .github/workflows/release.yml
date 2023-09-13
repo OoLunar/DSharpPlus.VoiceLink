@@ -35,9 +35,11 @@ jobs:
       - name: Build and Publish
         run: |
           mkdir build
-          dotnet pack -c Release -o build /p:Version=${{ github.event.release.tag_name }}
           if [ -n "${{ github.event.release.name }}" ]; then
+            dotnet pack -c Release -o build /p:Version="${{ github.event.release.name }}"
             dotnet nuget push "build/*" --skip-duplicate -k ${{ secrets.NUGET_ORG_API_KEY }} -s https://api.nuget.org/v3/index.json
+          else
+            dotnet pack -c Release -o build /p:Version="0.1.0-${{ github.sha }}"
           fi
           dotnet tool update -g docfx --prerelease
           docfx docs/docfx.json
