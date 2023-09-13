@@ -6,6 +6,7 @@
     <PackageId>OoLunar.DSharpPlus.VoiceLink.Natives.Opus</PackageId>
     <Description>Provides the dynamic library files for Opus.</Description>
     <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="../../libs/libopus/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
