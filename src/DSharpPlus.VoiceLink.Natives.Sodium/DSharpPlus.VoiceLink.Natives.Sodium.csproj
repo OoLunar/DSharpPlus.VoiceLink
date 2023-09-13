@@ -7,6 +7,9 @@
     <Description>Provides the dynamic library files for Sodium.</Description>
     <IsPackable>true</IsPackable>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <NoBuild>true</NoBuild>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <IncludeSymbols>false</IncludeSymbols>
   </PropertyGroup>
   <ItemGroup>
     <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
