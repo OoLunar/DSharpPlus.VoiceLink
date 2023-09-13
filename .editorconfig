@@ -73,6 +73,9 @@ dotnet_style_prefer_conditional_expression_over_return = true:error
 
 # Style Definitions
 dotnet_naming_style.pascal_case_style.capitalization = pascal_case
+dotnet_naming_style.camel_case_with_underscore.capitalization = camel_case
+dotnet_naming_style.camel_case_with_underscore.required_prefix = _
+dotnet_naming_style.camel_case_with_underscore.word_separator =
 
 # Use PascalCase for constant fields
 dotnet_naming_rule.constant_fields_should_be_pascal_case.severity = error
@@ -98,6 +101,16 @@ dotnet_naming_style.async_suffix.required_suffix = Async
 dotnet_naming_style.async_suffix.capitalization = pascal_case
 dotnet_naming_symbols.async_methods.applicable_kinds = method
 dotnet_naming_symbols.async_methods.required_modifiers = async
+
+# Enforce private or internal properties/fields to start with a '_' and be camelcased
+dotnet_naming_rule.camel_case_private_internal_fields_with_underscore.severity = suggestion
+dotnet_naming_rule.camel_case_private_internal_fields_with_underscore.symbols = private_internal_fields
+dotnet_naming_rule.camel_case_private_internal_fields_with_underscore.style = camel_case_with_underscore
+dotnet_naming_symbols.private_internal_fields.applicable_kinds = field, property
+dotnet_naming_symbols.private_internal_fields.applicable_accessibilities = private, internal
+dotnet_naming_symbols.private_internal_fields.required_modifiers = private, internal
+dotnet_naming_symbols.private_internal_fields.required_prefix = _
+dotnet_naming_symbols.private_internal_fields.required_style = camel_case
 
 # Don't force namespaces to match their folder names
 dotnet_diagnostic.IDE0130.severity = none

@@ -2,6 +2,9 @@
   <PropertyGroup>
     <PackageId>OoLunar.DSharpPlus.VoiceLink</PackageId>
     <Description>An updated voice extension for the DSharpPlus Discord library.</Description>
-    <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="DSharpPlus" Version="4.4.2" />
+  </ItemGroup>
 </Project>

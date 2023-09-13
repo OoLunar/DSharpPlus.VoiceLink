@@ -1,19 +1,15 @@
-name: .NET Build
+name: Build Commit
+
 on:
   push:
     paths:
-        - 'docs/**'
-        - 'src/**'
-        - 'libs/**'
-        - 'examples/**'
-        - 'tools/**'
-  pull_request:
-    paths:
-        - 'docs/**'
-        - 'src/**'
-        - 'libs/**'
-        - 'examples/**'
-        - 'tools/**'
+      - ".github/workflows/build-commit.yml"
+      - "docs/**"
+      - "libs/**"
+      - "src/**"
+      - "tools/**"
+      - "*.sln"
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: 1
@@ -22,19 +18,43 @@ env:
   DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
 
 jobs:
-  build_and_publish:
-    name: Build
+  build_commit:
+    name: Build Commit
     runs-on: self-hosted
     if: "!contains(format('{0} {1}', github.event.head_commit.message, github.event.pull_request.title), '[ci-skip]')"
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-depth: '0'
           submodules: recursive
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
-          dotnet-version: 7
-      - name: Build
-        run: "dotnet build"
+          dotnet-version: |
+            8
+            7
+      - name: Build Project
+        run: dotnet build
+  document_commit:
+    name: Document Commit
+    runs-on: self-hosted
+    needs: build_commit
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Install DocFX
+        run: dotnet tool update -g docfx --prerelease
+        continue-on-error: true
+      - name: Build documentation
+        run: docfx docs/docfx.json
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./docs/_site/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1

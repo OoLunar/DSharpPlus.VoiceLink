@@ -1,0 +1,76 @@
+name: Publish Release
+
+on:
+  release:
+    types:
+      - "published"
+  push:
+    paths:
+      - ".github/workflows/release.yml"
+      - "Directory.Build.props"
+      - "*.sln"
+      - "*.csproj"
+
+env:
+  DOTNET_NOLOGO: 1
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: 1
+  DOTNET_SYSTEM_GLOBALIZATION_INVARIANT: 1
+
+jobs:
+  publish_release:
+    name: Publish Release
+    runs-on: "self-hosted"
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: |
+            8
+            7
+      - name: Build and Publish
+        run: |
+          mkdir build
+          dotnet pack -c Release -o build /p:Version=${{ github.event.release.tag_name }}
+          if [ -n "${{ github.event.release.name }}" ]; then
+            dotnet nuget push "build/*" --skip-duplicate -k ${{ secrets.NUGET_ORG_API_KEY }} -s https://api.nuget.org/v3/index.json
+          fi
+          dotnet tool update -g docfx --prerelease
+          docfx docs/docfx.json
+      - name: Upload NuGet packages to GitHub Actions
+        uses: actions/upload-artifact@v3
+        with:
+          name: DSharpPlus.VoiceLink Release ${{ github.event.release.name }} NuGet Packages.zip
+          path: build/*
+      - name: Upload NuGet Packages To GitHub Release
+        uses: "ncipollo/release-action@v1"
+        if: github.event.release.name != null
+        with:
+          allowUpdates: true
+          artifactErrorsFailBuild: true
+          artifacts: "build/*"
+          token: ${{ secrets.GITHUB_TOKEN }}
+          omitNameDuringUpdate: true # We don't want to update the name of the release.
+          omitBodyDuringUpdate: true # We don't want to update the body of the release.
+  document_commit:
+    name: Document Commit
+    runs-on: self-hosted
+    needs: publish_release
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Upload GitHub Pages artifact
+        uses: actions/upload-pages-artifact@v1
+        with:
+          path: ./docs/_site/
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v1
