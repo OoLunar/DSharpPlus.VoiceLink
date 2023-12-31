@@ -6,11 +6,17 @@
             "type": "coreclr",
             "request": "launch",
             "preLaunchTask": "build",
-            "program": "${workspaceFolder}/examples/HelloWorld/bin/Debug/net7.0/HelloWorld.dll",
+            "program": "${workspaceFolder}/examples/HelloWorld/bin/Debug/net8.0/HelloWorld.dll",
+            "args": [],
             "cwd": "${workspaceFolder}",
+            "console": "internalConsole",
             "stopAtEntry": false,
-            "console": "integratedTerminal",
             "envFile": "${workspaceFolder}/.env"
+        },
+        {
+            "name": ".NET Core Attach",
+            "type": "coreclr",
+            "request": "attach"
         }
     ]
 }

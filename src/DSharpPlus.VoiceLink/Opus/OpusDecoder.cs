@@ -16,7 +16,6 @@ namespace DSharpPlus.VoiceLink.Opus
             return (errorCode != default && *errorCode != OpusErrorCode.Ok) ? throw new OpusException(*errorCode) : *decoder;
         }
 
-        /// <returns></returns>
         /// <inheritdoc cref="OpusNativeMethods.DecoderInit(OpusDecoder*, OpusSampleRate, int)"/>
         public unsafe void Init(OpusSampleRate sampleRate, int channels)
         {
@@ -49,9 +48,7 @@ namespace DSharpPlus.VoiceLink.Opus
                 throw new OpusException((OpusErrorCode)decodedLength);
             }
 
-            // Trim the data to the encoded length
-            data = data[decodedLength..];
-            return decodedLength;
+            return decodedLength * sizeof(short) * 2; // Multiplied by the sample size, which is size of short times the number of channels
         }
 
         /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, float*, int, int)"/>
@@ -117,7 +114,7 @@ namespace DSharpPlus.VoiceLink.Opus
             }
 
             // Less than zero means an error occurred
-            return sampleCount > 0 ? sampleCount : throw new OpusException((OpusErrorCode)sampleCount);
+            return sampleCount >= 0 ? sampleCount : throw new OpusException((OpusErrorCode)sampleCount);
         }
 
         public void Dispose() => Destroy();

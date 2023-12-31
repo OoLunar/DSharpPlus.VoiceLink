@@ -15,7 +15,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
 {
     public sealed class Program
     {
-        public static async Task Main(string[] args)
+        public static async Task Main()
         {
             IServiceCollection services = new ServiceCollection().AddLogging(logger =>
             {
@@ -56,7 +56,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
 
             DiscordClient client = new(new()
             {
-                Token = Environment.GetEnvironmentVariable("DISCORD_TOKEN"),
+                Token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? throw new InvalidOperationException("DISCORD_TOKEN environment variable is not set or is incorrect."),
                 Intents = DiscordIntents.All,
                 LoggerFactory = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
             });
@@ -66,18 +66,11 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 ServiceCollection = services
             });
 
-            voiceLinkExtension.UserConnected += (sender, e) =>
+            voiceLinkExtension.UserSpeaking += async (sender, e) =>
             {
-                _ = Task.Run(async () =>
-                {
-                    FileStream userPcm = File.OpenWrite($"./test/{e.User.Id}.pcm");
-                    await e.VoiceUser.AudioPipe!.CopyToAsync(userPcm);
-                    await userPcm.FlushAsync();
-                    userPcm.Close();
-                    await userPcm.DisposeAsync();
-                });
-
-                return Task.CompletedTask;
+                FileStream fileStream = File.Open($"test/{e.Member.Id}.pcm", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
+                await e.VoiceUser.AudioStream.CopyToAsync(fileStream);
+                await fileStream.DisposeAsync();
             };
 
             client.GuildDownloadCompleted += async (sender, e) =>
@@ -93,11 +86,7 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                     throw new InvalidOperationException("DISCORD_CHANNEL environment variable is not set or is incorrect.");
                 }
 
-                VoiceLinkConnection connection = await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.None);
-                //using FileStream rawPcm = File.OpenRead("./test/output.pcm");
-                //_ = connection.StartSpeakingAsync();
-                //await rawPcm.CopyToAsync(connection.AudioPipe!);
-                //await connection.AudioPipe!.CompleteAsync();
+                await voiceLinkExtension.ConnectAsync(sender.Guilds[guildId].Channels[channelId], VoiceState.None);
             };
 
             await client.ConnectAsync();

@@ -1,7 +1,7 @@
 using System;
 using System.Buffers.Binary;
 
-namespace DSharpPlus.VoiceLink
+namespace DSharpPlus.VoiceLink.Rtp
 {
     /// <summary>
     /// General helper methods for handling RTP headers.
@@ -50,7 +50,7 @@ namespace DSharpPlus.VoiceLink
         /// <param name="timestamp">The timestamp found in the RTP header.</param>
         /// <param name="ssrc">The Ssrc grabbed from the RTP header.</param>
         /// <exception cref="ArgumentException">The source buffer must have a minimum of 12 bytes for it to be a RTP header or contains an unknown RTP header version or type.</exception>
-        public static void DecodeHeader(ReadOnlySpan<byte> source, out ushort sequence, out uint timestamp, out uint ssrc)
+        public static RtpHeader DecodeHeader(ReadOnlySpan<byte> source)
         {
             if (source.Length < 12)
             {
@@ -65,9 +65,12 @@ namespace DSharpPlus.VoiceLink
                 throw new ArgumentException("The source buffer contains an unknown RTP header type.", nameof(source));
             }
 
-            sequence = BinaryPrimitives.ReadUInt16BigEndian(source[2..4]);
-            timestamp = BinaryPrimitives.ReadUInt32BigEndian(source[4..8]);
-            ssrc = BinaryPrimitives.ReadUInt32BigEndian(source[8..12]);
+            return new RtpHeader()
+            {
+                Sequence = BinaryPrimitives.ReadUInt16BigEndian(source[2..4]),
+                Timestamp = BinaryPrimitives.ReadUInt32BigEndian(source[4..8]),
+                Ssrc = BinaryPrimitives.ReadUInt32BigEndian(source[8..12])
+            };
         }
     }
 }

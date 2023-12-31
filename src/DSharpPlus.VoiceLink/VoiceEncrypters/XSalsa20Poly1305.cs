@@ -55,10 +55,10 @@ namespace DSharpPlus.VoiceLink.VoiceEncrypters
 
             // Grab the nonce
             Span<byte> nonce = stackalloc byte[SodiumXSalsa20Poly1305.NonceSize];
-            data[..24].CopyTo(nonce);
+            data[..12].CopyTo(nonce);
 
             // Decrypt the data
-            return SodiumXSalsa20Poly1305.Decrypt(data[24..], key, nonce, target) == 0;
+            return SodiumXSalsa20Poly1305.Decrypt(data[12..], key, nonce, target) == 0;
         }
     }
 }
