@@ -1,6 +1,11 @@
 using System;
+using System.Buffers;
 using System.Collections.Generic;
+using System.IO.Pipelines;
 using System.Linq;
+using System.Net.WebSockets;
+using System.Text.Json;
+using System.Threading;
 using System.Threading.Tasks;
 using DSharpPlus;
 using Microsoft.Extensions.DependencyInjection;
@@ -88,10 +93,7 @@ namespace DSharpPlus.VoiceLink
         /// <param name="configuration">The configuration to use for the extension.</param>
         public static async Task<IReadOnlyDictionary<int, VoiceLinkExtension>> UseVoiceLinkAsync(this DiscordShardedClient shardedClient, VoiceLinkConfiguration? configuration = null)
         {
-            if (shardedClient is null)
-            {
-                throw new ArgumentNullException(nameof(shardedClient));
-            }
+            ArgumentNullException.ThrowIfNull(shardedClient);
 
             _ = await shardedClient.InitializeShardsAsync();
             configuration ??= new();
@@ -110,7 +112,7 @@ namespace DSharpPlus.VoiceLink
                     .AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
             }
 
-            Dictionary<int, VoiceLinkExtension> extensions = new();
+            Dictionary<int, VoiceLinkExtension> extensions = [];
             foreach (DiscordClient shard in shardedClient.ShardClients.Values)
             {
                 extensions[shard.ShardId] = shard.GetExtension<VoiceLinkExtension>() ?? shard.UseVoiceLink(configuration);
@@ -133,12 +135,9 @@ namespace DSharpPlus.VoiceLink
         /// <param name="shardedClient">The client to retrieve the extension from.</param>
         public static IReadOnlyDictionary<int, VoiceLinkExtension> GetVoiceLinkExtensions(this DiscordShardedClient shardedClient)
         {
-            if (shardedClient is null)
-            {
-                throw new ArgumentNullException(nameof(shardedClient));
-            }
+            ArgumentNullException.ThrowIfNull(shardedClient);
 
-            Dictionary<int, VoiceLinkExtension> extensions = new();
+            Dictionary<int, VoiceLinkExtension> extensions = [];
             foreach (DiscordClient shard in shardedClient.ShardClients.Values)
             {
                 VoiceLinkExtension? extension = shard.GetExtension<VoiceLinkExtension>();
@@ -149,6 +148,58 @@ namespace DSharpPlus.VoiceLink
             }
 
             return extensions.AsReadOnly();
+        }
+
+        internal static async ValueTask SendAsync<T>(this ClientWebSocket webSocket, T data, CancellationToken cancellationToken = default) => await webSocket.SendAsync(JsonSerializer.SerializeToUtf8Bytes(data, VoiceLinkExtension.DefaultJsonSerializerOptions), WebSocketMessageType.Text, true, cancellationToken);
+
+        internal static async ValueTask ReadAsync(this ClientWebSocket websocket, PipeWriter pipeWriter, CancellationToken cancellationToken = default)
+        {
+            ValueWebSocketReceiveResult result;
+            do
+            {
+                Memory<byte> memory = pipeWriter.GetMemory(1024);
+                result = await websocket.ReceiveAsync(memory, cancellationToken);
+                if (result.MessageType == WebSocketMessageType.Close)
+                {
+                    throw new VoiceLinkWebsocketClosedException("WebSocket received close message.");
+                }
+                else if (result.MessageType != WebSocketMessageType.Text)
+                {
+                    throw new InvalidOperationException("WebSocket received unexpected and unknown binary data.");
+                }
+
+                pipeWriter.Advance(result.Count);
+            } while (!result.EndOfMessage);
+            await pipeWriter.FlushAsync(cancellationToken);
+        }
+
+        internal static async ValueTask<T> ParseAsync<T>(this PipeReader reader, CancellationToken cancellationToken = default)
+        {
+            ReadResult result = await reader.ReadAsync(cancellationToken);
+            return result.IsCanceled ? throw new OperationCanceledException("The reader was canceled.") : await reader.ParseAsync<T>(result);
+        }
+
+        internal static ValueTask<T> ParseAsync<T>(this PipeReader reader, ReadResult result)
+        {
+            try
+            {
+                if (result.IsCompleted)
+                {
+                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(reader.AsStream(), VoiceLinkExtension.DefaultJsonSerializerOptions)!);
+                }
+                else if (result.Buffer.IsSingleSegment)
+                {
+                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(result.Buffer.FirstSpan, VoiceLinkExtension.DefaultJsonSerializerOptions)!);
+                }
+                else
+                {
+                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(result.Buffer.ToArray(), VoiceLinkExtension.DefaultJsonSerializerOptions)!);
+                }
+            }
+            finally
+            {
+                reader.AdvanceTo(result.Buffer.End);
+            }
         }
     }
 }

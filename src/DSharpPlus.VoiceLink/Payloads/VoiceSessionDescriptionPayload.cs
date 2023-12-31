@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Newtonsoft.Json;
 
 namespace DSharpPlus.VoiceLink.Payloads
 {
@@ -8,8 +7,11 @@ namespace DSharpPlus.VoiceLink.Payloads
     /// </summary>
     /// <param name="Mode"></param>
     /// <param name="SecretKey"></param>
-    public sealed record VoiceSessionDescriptionPayload(
-        [property: JsonProperty("mode")] string Mode,
-        [property: JsonProperty("secret_key")] IReadOnlyList<byte> SecretKey
-    );
+    public sealed record VoiceSessionDescriptionPayload
+    {
+        public required string Mode { get; init; }
+
+        // This cannot be a byte[] because it will attempt to read the property as a base64 string.
+        public required IEnumerable<byte> SecretKey { get; init; }
+    }
 }

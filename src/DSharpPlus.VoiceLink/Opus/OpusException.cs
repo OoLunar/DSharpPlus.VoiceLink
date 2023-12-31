@@ -1,12 +1,10 @@
 using System;
-using System.Runtime.Serialization;
 
 namespace DSharpPlus.VoiceLink.Opus
 {
     /// <summary>
     /// Thrown by any Opus method that could fail.
     /// </summary>
-    [Serializable]
     public sealed class OpusException : Exception
     {
         /// <summary>
@@ -17,7 +15,6 @@ namespace DSharpPlus.VoiceLink.Opus
         public OpusException(OpusErrorCode errorCode) : base(GetErrorMessage(errorCode)) => ErrorCode = errorCode;
         public OpusException(OpusErrorCode errorCode, string message) : base(message) => ErrorCode = errorCode;
         public OpusException(OpusErrorCode errorCode, string message, Exception inner) : base(message, inner) => ErrorCode = errorCode;
-        private OpusException(SerializationInfo info, StreamingContext context) : base(info, context) { }
 
         /// <summary>
         /// Matches an error code to a human-readable error message.

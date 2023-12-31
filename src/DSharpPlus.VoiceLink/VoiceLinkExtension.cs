@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using DSharpPlus.AsyncEvents;
@@ -18,9 +19,15 @@ namespace DSharpPlus.VoiceLink
 {
     public sealed class VoiceLinkExtension : BaseExtension
     {
+        internal static readonly JsonSerializerOptions DefaultJsonSerializerOptions = new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+
         public VoiceLinkConfiguration Configuration { get; init; }
         public IReadOnlyDictionary<ulong, VoiceLinkConnection> Connections => _connections;
         internal readonly ConcurrentDictionary<ulong, VoiceLinkConnection> _connections = new();
+        internal readonly ConcurrentDictionary<ulong, VoiceLinkPendingConnection> _pendingConnections = new();
         private readonly ILogger<VoiceLinkExtension> _logger;
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionCreated { add => _connectionCreated.Register(value); remove => _connectionCreated.Unregister(value); }
@@ -44,7 +51,7 @@ namespace DSharpPlus.VoiceLink
             _logger = configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
             if (SodiumNativeMethods.Init() == -1)
             {
-                throw new SodiumException("Sodium initialization failed.");
+                throw new SodiumException("Sodium initialization failed. Is it installed?");
             }
         }
 
@@ -64,9 +71,9 @@ namespace DSharpPlus.VoiceLink
             Client.VoiceServerUpdated += VoiceServerUpdateEventHandlerAsync;
         }
 
-        public override void Dispose() => Parallel.ForEachAsync(_connections.Values, CancellationToken.None, async (connection, cancellationToken) => await connection.DisconnectAsync()).GetAwaiter().GetResult();
+        public override void Dispose() { }
 
-        public async Task<VoiceLinkConnection> ConnectAsync(DiscordChannel channel, VoiceState voiceState)
+        public async Task<VoiceLinkConnection> ConnectAsync(DiscordChannel channel, VoiceState voiceState, CancellationToken cancellationToken = default)
         {
             if (channel is null)
             {
@@ -84,6 +91,10 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentException("The voice state cannot be speaking when connecting.", nameof(voiceState));
             }
+            else if (_connections.TryGetValue(channel.Guild.Id, out _))
+            {
+                throw new InvalidOperationException($"The bot is already connected to a voice channel in guild {channel.Guild.Id}. The bot may only be connected to one voice channel per guild.");
+            }
 
             Permissions botPermissions = channel.PermissionsFor(channel.Guild.CurrentMember);
             if (!botPermissions.HasPermission(Permissions.AccessChannels | Permissions.UseVoice))
@@ -99,30 +110,32 @@ namespace DSharpPlus.VoiceLink
                 throw new InvalidOperationException($"The voice channel is full and the bot must have the {Permissions.ManageChannels} permission to connect to override the channel user limit.");
             }
 
-            VoiceLinkConnection connection = new(this, channel, Client.CurrentUser, voiceState);
-            if (!_connections.TryAdd(channel.Guild.Id, connection))
+            _logger.LogDebug("Connecting to voice channel {ChannelId} in guild {GuildId}.", channel.Id, channel.Guild.Id);
+            VoiceLinkPendingConnection pendingConnection = new();
+            if (!_pendingConnections.TryAdd(channel.Guild.Id, pendingConnection))
             {
-                throw new InvalidOperationException($"The bot is already connected to a voice channel in guild {channel.Guild.Id}. The bot may only be connected to one voice channel per guild.");
+                throw new InvalidOperationException($"The bot is already connecting to a voice channel in guild {channel.Guild.Id}. The bot may only be connected to one voice channel per guild.");
             }
 
 #pragma warning disable CS0618 // Type or member is obsolete
             // Error: This method should not be used unless you know what you're doing. Instead, look towards the other explicitly implemented methods which come with client-side validation.
             // Justification: I know what I'm doing.
-            await Client.SendPayloadAsync(GatewayOpCode.VoiceStateUpdate, new VoiceLinkStateCommand(
-                channel.Guild is null ? Optional.FromNoValue<ulong>() : channel.Guild.Id,
-                channel.Id,
-                Client.CurrentUser.Id,
-                Optional.FromNoValue<DiscordMember>(),
-                string.Empty,
-                voiceState.HasFlag(VoiceState.ServerDeafened),
-                voiceState.HasFlag(VoiceState.ServerMuted),
-                voiceState.HasFlag(VoiceState.UserDeafened),
-                voiceState.HasFlag(VoiceState.UserMuted),
-                Optional.FromNoValue<bool>(),
-                false,
-                false,
-                null
-            ));
+            await Client.SendPayloadAsync(GatewayOpCode.VoiceStateUpdate, new VoiceLinkStateCommand()
+            {
+                GuildId = channel.Guild.Id,
+                ChannelId = channel.Id,
+                UserId = Client.CurrentUser.Id,
+                Member = Optional.FromNoValue<DiscordMember>(),
+                SessionId = string.Empty,
+                Deaf = voiceState.HasFlag(VoiceState.ServerDeafened),
+                Mute = voiceState.HasFlag(VoiceState.ServerMuted),
+                SelfDeaf = voiceState.HasFlag(VoiceState.UserDeafened),
+                SelfMute = voiceState.HasFlag(VoiceState.UserMuted),
+                SelfStream = Optional.FromNoValue<bool>(),
+                SelfVideo = false,
+                Suppress = false,
+                RequestToSpeakTimestamp = null
+            });
 #pragma warning restore CS0618 // Type or member is obsolete
 
             // From the Discord Docs (https://discord.com/developers/docs/topics/voice-connections#connecting-to-voice):
@@ -130,11 +143,19 @@ namespace DSharpPlus.VoiceLink
             // > library must properly wait for both events before continuing. The first will contain a new key, session_id, and the second will provide
             // > voice server information we can use to establish a new voice connection:
             // As such, we have pre-emptively created event handlers for both events, and wait for both to be received before continuing.
-            await connection.IdleUntilReadyAsync();
+
+            // We're waiting for both the voice state and voice server update events to be received.
+            await pendingConnection.Semaphore.WaitAsync(cancellationToken);
+            await pendingConnection.Semaphore.WaitAsync(cancellationToken);
+            _pendingConnections.TryRemove(channel.Guild.Id, out _);
+            _logger.LogDebug("Received voice state and voice server update events for guild {GuildId}.", channel.Guild.Id);
+
+            VoiceLinkConnection connection = new(this, channel, voiceState);
+            await connection.InitializeAsync(pendingConnection.VoiceStateUpdateEventArgs!, pendingConnection.VoiceServerUpdateEventArgs!, cancellationToken);
             return connection;
         }
 
-        private async Task VoiceStateUpdateEventHandlerAsync(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
+        private Task VoiceStateUpdateEventHandlerAsync(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -144,17 +165,16 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentNullException(nameof(eventArgs));
             }
-            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection) && connection.ConnectionState is ConnectionState.None)
+            else if (_pendingConnections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkPendingConnection? pendingConnection))
             {
-                connection._voiceStateUpdateEventArgs = eventArgs;
-                if (connection._voiceServerUpdateEventArgs is not null)
-                {
-                    await connection.ConnectAsync();
-                }
+                pendingConnection.VoiceStateUpdateEventArgs = eventArgs;
+                pendingConnection.Semaphore.Release();
             }
+
+            return Task.CompletedTask;
         }
 
-        private async Task VoiceServerUpdateEventHandlerAsync(DiscordClient client, VoiceServerUpdateEventArgs eventArgs)
+        private Task VoiceServerUpdateEventHandlerAsync(DiscordClient client, VoiceServerUpdateEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -164,14 +184,13 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentNullException(nameof(eventArgs));
             }
-            else if (_connections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkConnection? connection) && connection.ConnectionState is ConnectionState.None)
+            else if (_pendingConnections.TryGetValue(eventArgs.Guild.Id, out VoiceLinkPendingConnection? pendingConnection))
             {
-                connection._voiceServerUpdateEventArgs = eventArgs;
-                if (connection._voiceStateUpdateEventArgs is not null)
-                {
-                    await connection.ConnectAsync();
-                }
+                pendingConnection.VoiceServerUpdateEventArgs = eventArgs;
+                pendingConnection.Semaphore.Release();
             }
+
+            return Task.CompletedTask;
         }
 
         /// <summary>
