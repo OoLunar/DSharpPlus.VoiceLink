@@ -31,7 +31,7 @@ namespace DSharpPlus.VoiceLink.Opus
             OpusErrorCode.Unimplemented => "Error -5: Invalid/unsupported request number.",
             OpusErrorCode.InvalidState => "Error -6: An encoder or decoder structure is invalid or already freed.",
             OpusErrorCode.AllocFail => "Error -7: Memory allocation has failed.",
-            _ => "Unknown error."
+            _ => $"Error {(int)errorCode}: Unknown error."
         };
     }
 }

@@ -43,11 +43,11 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="decodeFec">Flag (0 or 1) to request that any in-band forward error correction data be decoded. If no such data is available, the frame is decoded as if it were lost.</param>
         /// <returns>Number of decoded samples or an <see cref="OpusErrorCode"/></returns>
         [LibraryImport("opus", EntryPoint = "opus_decode")]
-        public static unsafe partial int Decode(OpusDecoder* decoder, byte* data, int length, short* pcm, int frameSize, int decodeFec);
+        public static unsafe partial int Decode(OpusDecoder* decoder, byte* data, int length, byte* pcm, int frameSize, int decodeFec);
 
         /// <inheritdoc cref="Decode(OpusDecoder*, byte*, int, byte*, int, int)"/>
         [LibraryImport("opus", EntryPoint = "opus_decode_float")]
-        public static unsafe partial int DecodeFloat(OpusDecoder* decoder, byte* data, int length, float* pcm, int frameSize, int decodeFec);
+        public static unsafe partial int DecodeFloat(OpusDecoder* decoder, byte* data, int length, byte* pcm, int frameSize, int decodeFec);
 
         /// <summary>
         /// Perform a CTL function on an Opus decoder.

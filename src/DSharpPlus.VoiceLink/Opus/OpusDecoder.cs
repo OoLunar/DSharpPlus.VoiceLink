@@ -31,15 +31,22 @@ namespace DSharpPlus.VoiceLink.Opus
             }
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, short*, int, int)"/>
-        public unsafe int Decode(ReadOnlySpan<byte> data, ref Span<short> pcm, int frameSize, bool decodeFec)
+        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, byte*, int, int)"/>
+        public unsafe int Decode(ReadOnlySpan<byte> data, Span<byte> pcm, bool decodeFec)
         {
             int decodedLength;
             fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
-            fixed (short* pcmPointer = pcm)
+            fixed (byte* pcmPointer = pcm)
             {
-                decodedLength = OpusNativeMethods.Decode(pinned, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
+                decodedLength = OpusNativeMethods.Decode(
+                    pinned,
+                    dataPointer,
+                    data.Length,
+                    pcmPointer,
+                    OpusNativeMethods.PacketGetNbFrames(dataPointer, data.Length),
+                    decodeFec ? 1 : 0
+                );
             }
 
             // Less than zero means an error occurred
@@ -48,16 +55,17 @@ namespace DSharpPlus.VoiceLink.Opus
                 throw new OpusException((OpusErrorCode)decodedLength);
             }
 
-            return decodedLength * sizeof(short) * 2; // Multiplied by the sample size, which is size of short times the number of channels
+            // Multiplied by the sample size, which is size of short times the number of channels
+            return decodedLength * sizeof(short) * 2;
         }
 
         /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, float*, int, int)"/>
-        public unsafe int DecodeFloat(ReadOnlySpan<byte> data, ref Span<float> pcm, int frameSize, bool decodeFec)
+        public unsafe int DecodeFloat(ReadOnlySpan<byte> data, Span<byte> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
             fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
-            fixed (float* pcmPointer = pcm)
+            fixed (byte* pcmPointer = pcm)
             {
                 decodedLength = OpusNativeMethods.DecodeFloat(pinned, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
             }

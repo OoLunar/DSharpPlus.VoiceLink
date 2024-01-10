@@ -15,7 +15,7 @@ namespace DSharpPlus.VoiceLink.VoiceEncrypters
         public int GetEncryptedSize(int length) => length + SodiumXSalsa20Poly1305.MacSize;
         public int GetDecryptedSize(int length) => length - SodiumXSalsa20Poly1305.MacSize;
 
-        public bool Encrypt(VoiceLinkUser voiceLinkUser, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key, Span<byte> target)
+        public bool TryEncryptOpusPacket(VoiceLinkUser voiceLinkUser, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key, Span<byte> target)
         {
             if (data.Length < SodiumXSalsa20Poly1305.MacSize)
             {
@@ -35,10 +35,10 @@ namespace DSharpPlus.VoiceLink.VoiceEncrypters
             target[..12].CopyTo(nonce);
 
             // Encrypt the data
-            return SodiumXSalsa20Poly1305.Encrypt(data, key, nonce, target[24..]) == 0;
+            return SodiumXSalsa20Poly1305.Encrypt(data, key, nonce, target[12..]) == 0;
         }
 
-        public bool Decrypt(VoiceLinkUser voiceLinkUser, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key, Span<byte> target)
+        public bool TryDecryptOpusPacket(VoiceLinkUser voiceLinkUser, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key, Span<byte> target)
         {
             if (data.Length < SodiumXSalsa20Poly1305.MacSize)
             {

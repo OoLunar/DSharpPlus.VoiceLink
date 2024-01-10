@@ -11,6 +11,7 @@ namespace DSharpPlus.VoiceLink.Rtp
         public const byte VersionWithExtension = 0x90;
         public const byte Version = 0x80;
         public const byte PayloadType = 0x78;
+        public static readonly byte[] RtpExtensionOneByte = [190, 222];
 
         /// <summary>
         /// Determines if the given buffer contains a valid RTP header.
@@ -67,6 +68,8 @@ namespace DSharpPlus.VoiceLink.Rtp
 
             return new RtpHeader()
             {
+                FirstMetadata = source[0],
+                SecondMetadata = source[1],
                 Sequence = BinaryPrimitives.ReadUInt16BigEndian(source[2..4]),
                 Timestamp = BinaryPrimitives.ReadUInt32BigEndian(source[4..8]),
                 Ssrc = BinaryPrimitives.ReadUInt32BigEndian(source[8..12])
