@@ -7,8 +7,6 @@ using System.IO.Pipelines;
 using System.Linq;
 using System.Net.Sockets;
 using System.Net.WebSockets;
-using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -20,6 +18,7 @@ using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.EventArgs;
 using DSharpPlus.VoiceLink.Payloads;
 using DSharpPlus.VoiceLink.Rtp;
+using DSharpPlus.VoiceLink.Sodium;
 using DSharpPlus.VoiceLink.VoiceEncrypters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -140,12 +139,12 @@ namespace DSharpPlus.VoiceLink
                 Query = $"v=4&encoding=json"
             }.Uri;
 
-            _logger.LogDebug("Connection {GuildId}: Connecting to {Endpoint}", Guild.Id, _endpoint);
+            _logger.LogDebug("Connection {GuildId}: Connecting to {Endpoint}...", Guild.Id, _endpoint);
             await _webSocket.ConnectAsync(_endpoint, cancellationToken);
-            _logger.LogDebug("Connection {GuildId}: Connected to {Endpoint}", Guild.Id, _endpoint);
+            _logger.LogDebug("Connection {GuildId}: Connected to {Endpoint}.", Guild.Id, _endpoint);
 
             // Start receiving events
-            _logger.LogDebug("Connection {GuildId}: Starting voice gateway loop", Guild.Id);
+            _logger.LogDebug("Connection {GuildId}: Starting voice gateway loop...", Guild.Id);
             _ = StartVoiceGatewayAsync();
 
             // Wait until we can start sending data.
@@ -159,12 +158,11 @@ namespace DSharpPlus.VoiceLink
                 Utf8JsonReader utf8JsonReader = new(readResult.Buffer);
                 while (utf8JsonReader.Read())
                 {
-                    if (utf8JsonReader.TokenType != JsonTokenType.PropertyName || utf8JsonReader.GetString() != "op")
+                    if (utf8JsonReader.TokenType != JsonTokenType.PropertyName || utf8JsonReader.GetString() != "op" || !utf8JsonReader.Read())
                     {
                         continue;
                     }
 
-                    utf8JsonReader.Read();
                     return (VoiceOpCode)utf8JsonReader.GetInt32();
                 }
 
@@ -178,7 +176,7 @@ namespace DSharpPlus.VoiceLink
                     await _webSocket.ReadAsync(_websocketPipe.Writer, _cancellationTokenSource.Token);
                     ReadResult readResult = await _websocketPipe.Reader.ReadAsync(_cancellationTokenSource.Token);
                     VoiceOpCode voiceOpCode = ParseVoiceOpCode(readResult);
-                    _logger.LogTrace("Connection {GuildId}: Received {VoiceOpCode}", Guild.Id, voiceOpCode);
+                    _logger.LogTrace("Connection {GuildId}: Received {VoiceOpCode}.", Guild.Id, voiceOpCode);
 
                     // TODO: Maybe dictionary of delegates?
                     // Dictionary<VoiceOpCode, Func<object, Task>> handlers = new();
@@ -187,11 +185,11 @@ namespace DSharpPlus.VoiceLink
                     {
                         case VoiceOpCode.Hello:
                             // Start heartbeat
-                            _logger.LogDebug("Connection {GuildId}: Starting heartbeat", Guild.Id);
+                            _logger.LogDebug("Connection {GuildId}: Starting heartbeat...", Guild.Id);
                             _ = SendHeartbeatAsync((await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceHelloPayload>>(readResult)).Data);
 
                             // Send Identify
-                            _logger.LogTrace("Connection {GuildId}: Sending identify", Guild.Id);
+                            _logger.LogTrace("Connection {GuildId}: Sending identify...", Guild.Id);
                             await _webSocket.SendAsync(new VoiceGatewayDispatch()
                             {
                                 OpCode = VoiceOpCode.Identify,
@@ -208,12 +206,12 @@ namespace DSharpPlus.VoiceLink
                             VoiceReadyPayload voiceReadyPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceReadyPayload>>(readResult)).Data;
 
                             // Insert our SSRC code
-                            _logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}", Guild.Id, voiceReadyPayload.Ssrc);
+                            _logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", Guild.Id, voiceReadyPayload.Ssrc);
                             _speakers.Add(voiceReadyPayload.Ssrc, new(this, voiceReadyPayload.Ssrc, Member));
 
                             // Setup UDP while also doing ip discovery
-                            _logger.LogDebug("Connection {GuildId}: Setting up UDP, sending ip discovery", Guild.Id);
-                            byte[] ipDiscovery = new DiscordIPDiscovery(0x01, 70, voiceReadyPayload.Ssrc, string.Empty, default);
+                            _logger.LogDebug("Connection {GuildId}: Setting up UDP, sending ip discovery...", Guild.Id);
+                            byte[] ipDiscovery = new DiscordIpDiscoveryPacket(0x01, 70, voiceReadyPayload.Ssrc, string.Empty, default);
                             _udpClient.Connect(voiceReadyPayload.Ip, voiceReadyPayload.Port);
                             await _udpClient.SendAsync(ipDiscovery, _cancellationTokenSource.Token);
 
@@ -224,9 +222,9 @@ namespace DSharpPlus.VoiceLink
                                 throw new InvalidOperationException("Received invalid IP Discovery Response.");
                             }
 
-                            DiscordIPDiscovery reply = result.Buffer;
-                            _logger.LogDebug("Connection {GuildId}: Received ip discovery response {Reply}", Guild.Id, reply);
-                            _logger.LogTrace("Connection {GuildId}: Sending select protocol", Guild.Id);
+                            DiscordIpDiscoveryPacket reply = result.Buffer;
+                            _logger.LogDebug("Connection {GuildId}: Received ip discovery response: {Reply}", Guild.Id, reply);
+                            _logger.LogTrace("Connection {GuildId}: Sending select protocol...", Guild.Id);
                             await _webSocket.SendAsync<VoiceGatewayDispatch>(new()
                             {
                                 OpCode = VoiceOpCode.SelectProtocol,
@@ -262,11 +260,11 @@ namespace DSharpPlus.VoiceLink
                             }
                             break;
                         case VoiceOpCode.Resumed:
-                            _logger.LogInformation("Connection {GuildId}: Resumed", Guild.Id);
+                            _logger.LogInformation("Connection {GuildId}: Resumed.", Guild.Id);
                             break;
                         case VoiceOpCode.ClientConnected:
                             VoiceUserJoinPayload voiceClientConnectedPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserJoinPayload>>(readResult)).Data;
-                            _logger.LogDebug("Connection {GuildId}: User {UserId} connected", Guild.Id, voiceClientConnectedPayload.UserId);
+                            _logger.LogDebug("Connection {GuildId}: User {UserId} connected.", Guild.Id, voiceClientConnectedPayload.UserId);
                             await Extension._userConnected.InvokeAsync(Extension, new VoiceLinkUserEventArgs()
                             {
                                 Connection = this,
@@ -275,7 +273,7 @@ namespace DSharpPlus.VoiceLink
                             break;
                         case VoiceOpCode.ClientDisconnect:
                             VoiceUserLeavePayload voiceClientDisconnectedPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserLeavePayload>>(readResult)).Data;
-                            _logger.LogDebug("Connection {GuildId}: User {UserId} disconnected", Guild.Id, voiceClientDisconnectedPayload.UserId);
+                            _logger.LogDebug("Connection {GuildId}: User {UserId} disconnected.", Guild.Id, voiceClientDisconnectedPayload.UserId);
                             if (_speakers.FirstOrDefault(x => x.Value.Member.Id == voiceClientDisconnectedPayload.UserId) is KeyValuePair<uint, VoiceLinkUser> kvp)
                             {
                                 _speakers.Remove(kvp.Key);
@@ -289,8 +287,16 @@ namespace DSharpPlus.VoiceLink
                             break;
                         case VoiceOpCode.Speaking:
                             VoiceSpeakingPayload voiceSpeakingPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceSpeakingPayload>>(readResult)).Data;
-                            _logger.LogTrace("Connection {GuildId}: User {UserId} is speaking", Guild.Id, voiceSpeakingPayload.UserId);
-                            _speakers.Add(voiceSpeakingPayload.Ssrc, new(this, voiceSpeakingPayload.Ssrc, await Guild.GetMemberAsync(voiceSpeakingPayload.UserId)));
+                            _logger.LogTrace("Connection {GuildId}: User {UserId} is speaking.", Guild.Id, voiceSpeakingPayload.UserId);
+                            if (!_speakers.TryGetValue(voiceSpeakingPayload.Ssrc, out VoiceLinkUser? voiceLinkUser))
+                            {
+                                _speakers.Add(voiceSpeakingPayload.Ssrc, new(this, voiceSpeakingPayload.Ssrc, await Guild.GetMemberAsync(voiceSpeakingPayload.UserId)));
+                            }
+                            else
+                            {
+                                voiceLinkUser.Member = await Guild.GetMemberAsync(voiceSpeakingPayload.UserId);
+                            }
+
                             await Extension._userSpeaking.InvokeAsync(Extension, new VoiceLinkUserSpeakingEventArgs()
                             {
                                 Connection = this,
@@ -307,14 +313,14 @@ namespace DSharpPlus.VoiceLink
                 catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is WebSocketState.Connecting)
                 {
                     // In theory this means that resuming failed. We should just restart the connection entirely.
-                    _logger.LogWarning("Connection {GuildId}: Websocket closed, restarting the connection entirely.", Guild.Id);
+                    _logger.LogWarning("Connection {GuildId}: Websocket closed, restarting the connection entirely...", Guild.Id);
                     await ReconnectAsync();
                     return;
                 }
                 catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is not WebSocketState.Open)
                 {
                     // Attempt to reconnect and resume. If that fails then restart the connection entirely.
-                    _logger.LogWarning("Connection {GuildId}: Websocket closed, attempting to resume.", Guild.Id);
+                    _logger.LogWarning("Connection {GuildId}: Websocket closed, attempting to resume...", Guild.Id);
                     await _webSocket.ConnectAsync(_endpoint!, _cancellationTokenSource.Token);
                     await _webSocket.SendAsync(new DiscordVoiceResumingCommand()
                     {
@@ -333,14 +339,14 @@ namespace DSharpPlus.VoiceLink
             {
                 if (_heartbeatQueue.Count > Extension.Configuration.MaxHeartbeatQueueSize)
                 {
-                    _logger.LogError("Connection {GuildId}: Heartbeat queue is too large ({MaxHeartbeat}), disconnecting and reconnecting.", Guild.Id, Extension.Configuration.MaxHeartbeatQueueSize);
+                    _logger.LogError("Connection {GuildId}: Heartbeat queue is too large ({MaxHeartbeat}), disconnecting and reconnecting...", Guild.Id, Extension.Configuration.MaxHeartbeatQueueSize);
                     await ReconnectAsync();
                     return;
                 }
 
                 long unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 _heartbeatQueue.Enqueue(unixTimestamp);
-                _logger.LogTrace("Connection {GuildId}: Sending heartbeat {UnixTimestamp}", Guild.Id, unixTimestamp);
+                _logger.LogTrace("Connection {GuildId}: Sending heartbeat {UnixTimestamp}...", Guild.Id, unixTimestamp);
 
                 await _webSocket.SendAsync(new VoiceGatewayDispatch()
                 {
@@ -358,32 +364,63 @@ namespace DSharpPlus.VoiceLink
                 // This is a hotpath. Any modifications to this code should always
                 // lead to equal or better performance. If you're not sure, don't touch it.
                 UdpReceiveResult udpReceiveResult = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
-                if (udpReceiveResult.Buffer.Length == 8)
-                {
-                    // Keep alive packet
-                    UdpPing = TimeSpan.FromMilliseconds(Unsafe.As<byte, long>(ref udpReceiveResult.Buffer[0]) - DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
 
-                    // TODO: Maybe we should send a keep alive packet back?
-                    continue;
-                }
-
-                // RTP Header
+                // RTP Header. Additionally packets with a length of 48 bytes are spammed to us, however we don't know what they are.
+                // We suspect them to be RTCP receiver reports, however we cannot find a way to decode them.
                 if (!RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
                 {
-                    _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
+                    if (!RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
+                    {
+                        _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
+                        continue;
+                    }
+
+                    RtcpHeader header = RtcpUtilities.DecodeHeader(udpReceiveResult.Buffer);
+                    Memory<byte> data = udpReceiveResult.Buffer;
+                    Memory<byte> nonce = ArrayPool<byte>.Shared.Rent(24);
+                    data[^4..].CopyTo(nonce);
+
+                    Memory<byte> payload = data[8..^4];
+                    Memory<byte> result = ArrayPool<byte>.Shared.Rent(udpReceiveResult.Buffer.Length - SodiumXSalsa20Poly1305.MacSize);
+                    if (SodiumXSalsa20Poly1305.Decrypt(payload.Span, _secretKey, nonce.Span, result.Span) != 0)
+                    {
+                        //_logger.LogWarning("Connection {GuildId}: Failed to decrypt rtcp receiver report packet, skipping.", Guild.Id);
+                        continue;
+                    }
+
+                    RtcpReceiverReportPacket receiverReportPacket = new(header, payload.Span);
+                    //_logger.LogTrace("Connection {GuildId}: Received RTCP receiver report packet: {ReceiverReportPacket}", Guild.Id, receiverReportPacket);
+                    ArrayPool<byte>.Shared.Return(nonce.ToArray());
+                    ArrayPool<byte>.Shared.Return(result.ToArray());
                     continue;
                 }
 
                 RtpHeader rtpHeader = RtpUtilities.DecodeHeader(udpReceiveResult.Buffer);
+                if (rtpHeader.PayloadType != 120)
+                {
+                    _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a payload type of {PayloadType}. Skipping.", Guild.Id, rtpHeader.PayloadType);
+                    continue;
+                }
+
+                if (rtpHeader.HasMarker || rtpHeader.HasExtension)
+                {
+                    // All clients send a marker bit when they first connect. For now we're just going to ignore this.
+                    continue;
+                }
+
                 if (!_speakers.TryGetValue(rtpHeader.Ssrc, out VoiceLinkUser? voiceLinkUser))
                 {
-                    _logger.LogWarning("Connection {GuildId}: Received audio from unknown user {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
-                    continue;
+                    // Create a new user if we don't have one
+                    // We're explicitly passing a null member, however the dev should never expect this to
+                    // be null as the speaking event should always fire once we receive both the user and the ssrc.
+                    // TL;DR, this is to ensure we never lose any audio data.
+                    voiceLinkUser = new(this, rtpHeader.Ssrc, null!);
+                    _speakers.Add(rtpHeader.Ssrc, voiceLinkUser);
                 }
 
                 // Decrypt the audio
                 byte[] decryptedAudio = ArrayPool<byte>.Shared.Rent(_voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length));
-                if (!_voiceEncrypter.Decrypt(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.AsSpan()))
+                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.AsSpan()))
                 {
                     _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
                     continue;
@@ -391,30 +428,29 @@ namespace DSharpPlus.VoiceLink
 
                 // TODO: Handle FEC (Forward Error Correction) aka packet loss.
                 // * https://tools.ietf.org/html/rfc5109
+                bool hasDataLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
 
                 // Decode the audio
-                DecodeOpusAudio(decryptedAudio.AsSpan().TrimEnd((byte)'\0'), voiceLinkUser);
+                DecodeOpusAudio(decryptedAudio, voiceLinkUser, hasDataLoss);
                 ArrayPool<byte>.Shared.Return(decryptedAudio);
                 await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
 
-                static void DecodeOpusAudio(ReadOnlySpan<byte> opusPacket, VoiceLinkUser voiceLinkUser)
+                static void DecodeOpusAudio(ReadOnlySpan<byte> opusPacket, VoiceLinkUser voiceLinkUser, bool hasPacketLoss = false)
                 {
                     // Calculate the frame size and buffer size
-                    int sampleRate = 48000; // 48 kHz
-                    double frameDuration = 0.020; // 20 milliseconds
-                    int frameSize = (int)(sampleRate * frameDuration); // 960 samples
-                    int bufferSize = frameSize * 2; // Stereo audio
+                    const int sampleRate = 48000; // 48 kHz
+                    const double frameDuration = 0.020; // 20 milliseconds
+                    const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
+                    const int bufferSize = frameSize * 2; // Stereo audio
 
                     // Allocate the buffer for the PCM data
-                    Span<short> pcmBuffer = new short[bufferSize];
+                    Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
 
                     // Decode the Opus packet
-                    voiceLinkUser._opusDecoder.Decode(opusPacket, ref pcmBuffer, frameSize, false);
+                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, hasPacketLoss);
 
                     // Write the audio to the pipe
-                    Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize * sizeof(short));
-                    pcmBuffer.CopyTo(MemoryMarshal.Cast<byte, short>(audioBuffer));
-                    voiceLinkUser._audioPipe.Writer.Advance(bufferSize * sizeof(short));
+                    voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
                 }
             }
         }
