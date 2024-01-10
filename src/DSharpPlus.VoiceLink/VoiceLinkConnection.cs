@@ -4,7 +4,6 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO.Pipelines;
-using System.Linq;
 using System.Net.Sockets;
 using System.Net.WebSockets;
 using System.Text.Json;
@@ -15,7 +14,6 @@ using DSharpPlus.EventArgs;
 using DSharpPlus.Net.Abstractions;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
-using DSharpPlus.VoiceLink.EventArgs;
 using DSharpPlus.VoiceLink.Payloads;
 using DSharpPlus.VoiceLink.Rtp;
 using DSharpPlus.VoiceLink.Sodium;
@@ -25,7 +23,7 @@ using Microsoft.Extensions.Logging;
 
 namespace DSharpPlus.VoiceLink
 {
-    public sealed class VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, VoiceState voiceState)
+    public sealed partial class VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, VoiceState voiceState)
     {
         public VoiceState VoiceState { get; init; } = voiceState;
         public VoiceLinkExtension Extension { get; init; } = extension;
@@ -177,138 +175,15 @@ namespace DSharpPlus.VoiceLink
                     ReadResult readResult = await _websocketPipe.Reader.ReadAsync(_cancellationTokenSource.Token);
                     VoiceOpCode voiceOpCode = ParseVoiceOpCode(readResult);
                     _logger.LogTrace("Connection {GuildId}: Received {VoiceOpCode}.", Guild.Id, voiceOpCode);
-
-                    // TODO: Maybe dictionary of delegates?
-                    // Dictionary<VoiceOpCode, Func<object, Task>> handlers = new();
-                    // Might be able to make use of JsonTypeInfo so we can have a concrete type for the data.
-                    switch (voiceOpCode)
+                    if (_voiceGatewayHandlers.TryGetValue(voiceOpCode, out Func<VoiceLinkConnection, ReadResult, ValueTask>? handler))
                     {
-                        case VoiceOpCode.Hello:
-                            // Start heartbeat
-                            _logger.LogDebug("Connection {GuildId}: Starting heartbeat...", Guild.Id);
-                            _ = SendHeartbeatAsync((await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceHelloPayload>>(readResult)).Data);
-
-                            // Send Identify
-                            _logger.LogTrace("Connection {GuildId}: Sending identify...", Guild.Id);
-                            await _webSocket.SendAsync(new VoiceGatewayDispatch()
-                            {
-                                OpCode = VoiceOpCode.Identify,
-                                Data = new VoiceIdentifyCommand()
-                                {
-                                    ServerId = Guild.Id,
-                                    SessionId = _sessionId!,
-                                    Token = _voiceToken!,
-                                    UserId = User.Id
-                                }
-                            }, _cancellationTokenSource.Token);
-                            break;
-                        case VoiceOpCode.Ready:
-                            VoiceReadyPayload voiceReadyPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceReadyPayload>>(readResult)).Data;
-
-                            // Insert our SSRC code
-                            _logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", Guild.Id, voiceReadyPayload.Ssrc);
-                            _speakers.Add(voiceReadyPayload.Ssrc, new(this, voiceReadyPayload.Ssrc, Member));
-
-                            // Setup UDP while also doing ip discovery
-                            _logger.LogDebug("Connection {GuildId}: Setting up UDP, sending ip discovery...", Guild.Id);
-                            byte[] ipDiscovery = new DiscordIpDiscoveryPacket(0x01, 70, voiceReadyPayload.Ssrc, string.Empty, default);
-                            _udpClient.Connect(voiceReadyPayload.Ip, voiceReadyPayload.Port);
-                            await _udpClient.SendAsync(ipDiscovery, _cancellationTokenSource.Token);
-
-                            // Receive IP Discovery Response
-                            UdpReceiveResult result = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
-                            if (result.Buffer.Length != 74)
-                            {
-                                throw new InvalidOperationException("Received invalid IP Discovery Response.");
-                            }
-
-                            DiscordIpDiscoveryPacket reply = result.Buffer;
-                            _logger.LogDebug("Connection {GuildId}: Received ip discovery response: {Reply}", Guild.Id, reply);
-                            _logger.LogTrace("Connection {GuildId}: Sending select protocol...", Guild.Id);
-                            await _webSocket.SendAsync<VoiceGatewayDispatch>(new()
-                            {
-                                OpCode = VoiceOpCode.SelectProtocol,
-                                Data = new VoiceSelectProtocolCommand()
-                                {
-                                    Protocol = "udp",
-                                    Data = new VoiceSelectProtocolCommandData()
-                                    {
-                                        Address = reply.Address,
-                                        Port = reply.Port,
-                                        Mode = _voiceEncrypter.Name
-                                    }
-                                }
-                            }, _cancellationTokenSource.Token);
-                            break;
-                        case VoiceOpCode.SessionDescription:
-                            VoiceSessionDescriptionPayload sessionDescriptionPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceSessionDescriptionPayload>>(readResult)).Data;
-                            _secretKey = sessionDescriptionPayload.SecretKey.ToArray();
-                            _ = ReceiveAudioLoopAsync();
-                            _readySemaphore.Release();
-                            await Extension._connectionCreated.InvokeAsync(Extension, new VoiceLinkConnectionEventArgs(this));
-                            break;
-                        case VoiceOpCode.HeartbeatAck:
-                            long heartbeat = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<long>>(readResult)).Data;
-                            if (_heartbeatQueue.TryDequeue(out long unixTimestamp))
-                            {
-                                WebsocketPing = TimeSpan.FromMilliseconds(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - unixTimestamp);
-                            }
-                            else
-                            {
-                                _logger.LogError("Connection {GuildId}: Received unexpected heartbeat, disconnecting and reconnecting.", Guild.Id);
-                                await ReconnectAsync();
-                            }
-                            break;
-                        case VoiceOpCode.Resumed:
-                            _logger.LogInformation("Connection {GuildId}: Resumed.", Guild.Id);
-                            break;
-                        case VoiceOpCode.ClientConnected:
-                            VoiceUserJoinPayload voiceClientConnectedPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserJoinPayload>>(readResult)).Data;
-                            _logger.LogDebug("Connection {GuildId}: User {UserId} connected.", Guild.Id, voiceClientConnectedPayload.UserId);
-                            await Extension._userConnected.InvokeAsync(Extension, new VoiceLinkUserEventArgs()
-                            {
-                                Connection = this,
-                                Member = await Guild.GetMemberAsync(voiceClientConnectedPayload.UserId)
-                            });
-                            break;
-                        case VoiceOpCode.ClientDisconnect:
-                            VoiceUserLeavePayload voiceClientDisconnectedPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserLeavePayload>>(readResult)).Data;
-                            _logger.LogDebug("Connection {GuildId}: User {UserId} disconnected.", Guild.Id, voiceClientDisconnectedPayload.UserId);
-                            if (_speakers.FirstOrDefault(x => x.Value.Member.Id == voiceClientDisconnectedPayload.UserId) is KeyValuePair<uint, VoiceLinkUser> kvp)
-                            {
-                                _speakers.Remove(kvp.Key);
-                            }
-
-                            await Extension._userDisconnected.InvokeAsync(Extension, new VoiceLinkUserEventArgs()
-                            {
-                                Connection = this,
-                                Member = await Guild.GetMemberAsync(voiceClientDisconnectedPayload.UserId)
-                            });
-                            break;
-                        case VoiceOpCode.Speaking:
-                            VoiceSpeakingPayload voiceSpeakingPayload = (await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceSpeakingPayload>>(readResult)).Data;
-                            _logger.LogTrace("Connection {GuildId}: User {UserId} is speaking.", Guild.Id, voiceSpeakingPayload.UserId);
-                            if (!_speakers.TryGetValue(voiceSpeakingPayload.Ssrc, out VoiceLinkUser? voiceLinkUser))
-                            {
-                                _speakers.Add(voiceSpeakingPayload.Ssrc, new(this, voiceSpeakingPayload.Ssrc, await Guild.GetMemberAsync(voiceSpeakingPayload.UserId)));
-                            }
-                            else
-                            {
-                                voiceLinkUser.Member = await Guild.GetMemberAsync(voiceSpeakingPayload.UserId);
-                            }
-
-                            await Extension._userSpeaking.InvokeAsync(Extension, new VoiceLinkUserSpeakingEventArgs()
-                            {
-                                Connection = this,
-                                Payload = voiceSpeakingPayload,
-                                VoiceUser = _speakers[voiceSpeakingPayload.Ssrc]
-                            });
-                            break;
-                        default:
-                            VoiceGatewayDispatch voiceGatewayDispatch = await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch>(readResult);
-                            _logger.LogWarning("Connection {GuildId}: Unknown voice op code {VoiceOpCode}: {VoiceGatewayDispatch}", Guild.Id, voiceGatewayDispatch.OpCode, voiceGatewayDispatch.Data);
-                            break;
+                        await handler(this, readResult);
+                        continue;
                     }
+
+                    // Unknown voice op code, likely undocumented.
+                    VoiceGatewayDispatch voiceGatewayDispatch = await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch>(readResult);
+                    _logger.LogWarning("Connection {GuildId}: Unknown voice op code {VoiceOpCode}: {VoiceGatewayDispatch}", Guild.Id, voiceGatewayDispatch.OpCode, voiceGatewayDispatch.Data);
                 }
                 catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is WebSocketState.Connecting)
                 {
@@ -389,7 +264,7 @@ namespace DSharpPlus.VoiceLink
                     }
 
                     RtcpReceiverReportPacket receiverReportPacket = new(header, payload.Span);
-                    //_logger.LogTrace("Connection {GuildId}: Received RTCP receiver report packet: {ReceiverReportPacket}", Guild.Id, receiverReportPacket);
+                    _logger.LogTrace("Connection {GuildId}: Received RTCP receiver report packet: {ReceiverReportPacket}", Guild.Id, receiverReportPacket);
                     ArrayPool<byte>.Shared.Return(nonce.ToArray());
                     ArrayPool<byte>.Shared.Return(result.ToArray());
                     continue;
