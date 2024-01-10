@@ -15,11 +15,12 @@ namespace DSharpPlus.VoiceLink
 {
     public sealed partial class VoiceLinkConnection
     {
-        private static readonly FrozenDictionary<VoiceOpCode, Func<VoiceLinkConnection, ReadResult, ValueTask>> _voiceGatewayHandlers;
+        private delegate ValueTask VoiceGatewayHandler(VoiceLinkConnection connection, ReadResult result);
+        private static readonly FrozenDictionary<VoiceOpCode, VoiceGatewayHandler> _voiceGatewayHandlers;
 
         static VoiceLinkConnection()
         {
-            Dictionary<VoiceOpCode, Func<VoiceLinkConnection, ReadResult, ValueTask>> handlers = new()
+            Dictionary<VoiceOpCode, VoiceGatewayHandler> handlers = new()
             {
                 [VoiceOpCode.Hello] = HelloAsync,
                 [VoiceOpCode.Ready] = ReadyAsync,

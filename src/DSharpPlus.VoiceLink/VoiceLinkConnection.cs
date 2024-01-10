@@ -175,7 +175,7 @@ namespace DSharpPlus.VoiceLink
                     ReadResult readResult = await _websocketPipe.Reader.ReadAsync(_cancellationTokenSource.Token);
                     VoiceOpCode voiceOpCode = ParseVoiceOpCode(readResult);
                     _logger.LogTrace("Connection {GuildId}: Received {VoiceOpCode}.", Guild.Id, voiceOpCode);
-                    if (_voiceGatewayHandlers.TryGetValue(voiceOpCode, out Func<VoiceLinkConnection, ReadResult, ValueTask>? handler))
+                    if (_voiceGatewayHandlers.TryGetValue(voiceOpCode, out VoiceGatewayHandler? handler))
                     {
                         await handler(this, readResult);
                         continue;
