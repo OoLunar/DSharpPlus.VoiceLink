@@ -329,7 +329,7 @@ namespace DSharpPlus.VoiceLink
                     const int sampleRate = 48000; // 48 kHz
                     const double frameDuration = 0.020; // 20 milliseconds
                     const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
-                    const int bufferSize = frameSize * 2; // Stereo audio
+                    const int bufferSize = frameSize * 2 * sizeof(short); // Stereo audio + opus PCM units are 16 bits
 
                     // Allocate the buffer for the PCM data
                     Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
