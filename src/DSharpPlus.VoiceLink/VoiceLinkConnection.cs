@@ -277,7 +277,7 @@ namespace DSharpPlus.VoiceLink
                     continue;
                 }
 
-                if (rtpHeader.HasMarker || rtpHeader.HasExtension)
+                if (rtpHeader.HasMarker)
                 {
                     // All clients send a marker bit when they first connect. For now we're just going to ignore this.
                     continue;
@@ -299,6 +299,15 @@ namespace DSharpPlus.VoiceLink
                 {
                     _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
                     continue;
+                }
+
+                // Strip any RTP header extensions. See https://www.rfc-editor.org/rfc/rfc3550#section-5.3.1
+                // Discord currently uses a generic profile marker of [0xbe, 0xde], see
+                // https://www.rfc-editor.org/rfc/rfc8285#section-4.2
+                if (rtpHeader.HasExtension)
+                {
+                    ushort extensionLength = RtpUtilities.GetHeaderExtensionLength(decryptedAudio.Span);
+                    decryptedAudio = decryptedAudio[(4 + 4 * extensionLength)..];
                 }
 
                 // TODO: Handle FEC (Forward Error Correction) aka packet loss.

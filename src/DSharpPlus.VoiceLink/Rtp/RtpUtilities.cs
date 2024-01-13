@@ -75,5 +75,11 @@ namespace DSharpPlus.VoiceLink.Rtp
                 Ssrc = BinaryPrimitives.ReadUInt32BigEndian(source[8..12])
             };
         }
+
+        public static ushort GetHeaderExtensionLength(ReadOnlySpan<byte> rtpPayload)
+        {
+            // offset by two to ignore the profile marker
+            return BinaryPrimitives.ReadUInt16BigEndian(rtpPayload[2..]);
+        }
     }
 }
