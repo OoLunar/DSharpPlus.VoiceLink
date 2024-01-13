@@ -204,6 +204,12 @@ namespace DSharpPlus.VoiceLink
                         Token = _voiceToken!
                     }, _cancellationTokenSource.Token);
                 }
+                catch (Exception ex)
+                {
+                    // We need to catch and log all errors here because this task method is not watched
+                    _logger.LogError(ex, "Unexpected failure on voice websocket");
+                    throw;
+                }
             }
         }
 
@@ -319,8 +325,18 @@ namespace DSharpPlus.VoiceLink
                 bool hasDataLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
 
                 // Decode the audio
-                DecodeOpusAudio(decryptedAudio, voiceLinkUser, hasDataLoss);
-                ArrayPool<byte>.Shared.Return(decryptedAudio);
+                try
+                {
+                    DecodeOpusAudio(decryptedAudio.Span, voiceLinkUser, hasDataLoss);
+                }
+                catch (Exception ex)
+                {
+                    // TODO: Should this be a reason to terminate the connection?
+                    // definitely should if a few in a row fail, at the very least
+                    _logger.LogError(ex, "Connection {GuildId}: Failed to decode opus audio from {Ssrc}, skipping", Guild.Id, rtpHeader.Ssrc);
+                }
+
+                ArrayPool<byte>.Shared.Return(decryptedAudioArr);
                 await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
 
                 static void DecodeOpusAudio(ReadOnlySpan<byte> opusPacket, VoiceLinkUser voiceLinkUser, bool hasPacketLoss = false)
