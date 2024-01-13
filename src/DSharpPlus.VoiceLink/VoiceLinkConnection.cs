@@ -294,10 +294,14 @@ namespace DSharpPlus.VoiceLink
                 }
 
                 // Decrypt the audio
-                byte[] decryptedAudio = ArrayPool<byte>.Shared.Rent(_voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length));
-                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.AsSpan()))
+                int decryptedBufferSize = _voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length);
+                byte[] decryptedAudioArr = ArrayPool<byte>.Shared.Rent(decryptedBufferSize);
+                Memory<byte> decryptedAudio = decryptedAudioArr.AsMemory(0, decryptedBufferSize);
+
+                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.Span))
                 {
                     _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
+                    ArrayPool<byte>.Shared.Return(decryptedAudioArr);
                     continue;
                 }
 
