@@ -204,6 +204,12 @@ namespace DSharpPlus.VoiceLink
                         Token = _voiceToken!
                     }, _cancellationTokenSource.Token);
                 }
+                catch (Exception ex)
+                {
+                    // We need to catch and log all errors here because this task method is not watched
+                    _logger.LogError(ex, "Unexpected failure on voice websocket");
+                    throw;
+                }
             }
         }
 
@@ -277,7 +283,7 @@ namespace DSharpPlus.VoiceLink
                     continue;
                 }
 
-                if (rtpHeader.HasMarker || rtpHeader.HasExtension)
+                if (rtpHeader.HasMarker)
                 {
                     // All clients send a marker bit when they first connect. For now we're just going to ignore this.
                     continue;
@@ -294,11 +300,24 @@ namespace DSharpPlus.VoiceLink
                 }
 
                 // Decrypt the audio
-                byte[] decryptedAudio = ArrayPool<byte>.Shared.Rent(_voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length));
-                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.AsSpan()))
+                int decryptedBufferSize = _voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length);
+                byte[] decryptedAudioArr = ArrayPool<byte>.Shared.Rent(decryptedBufferSize);
+                Memory<byte> decryptedAudio = decryptedAudioArr.AsMemory(0, decryptedBufferSize);
+
+                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.Span))
                 {
                     _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
+                    ArrayPool<byte>.Shared.Return(decryptedAudioArr);
                     continue;
+                }
+
+                // Strip any RTP header extensions. See https://www.rfc-editor.org/rfc/rfc3550#section-5.3.1
+                // Discord currently uses a generic profile marker of [0xbe, 0xde], see
+                // https://www.rfc-editor.org/rfc/rfc8285#section-4.2
+                if (rtpHeader.HasExtension)
+                {
+                    ushort extensionLength = RtpUtilities.GetHeaderExtensionLength(decryptedAudio.Span);
+                    decryptedAudio = decryptedAudio[(4 + 4 * extensionLength)..];
                 }
 
                 // TODO: Handle FEC (Forward Error Correction) aka packet loss.
@@ -306,8 +325,18 @@ namespace DSharpPlus.VoiceLink
                 bool hasDataLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
 
                 // Decode the audio
-                DecodeOpusAudio(decryptedAudio, voiceLinkUser, hasDataLoss);
-                ArrayPool<byte>.Shared.Return(decryptedAudio);
+                try
+                {
+                    DecodeOpusAudio(decryptedAudio.Span, voiceLinkUser, hasDataLoss);
+                }
+                catch (Exception ex)
+                {
+                    // TODO: Should this be a reason to terminate the connection?
+                    // definitely should if a few in a row fail, at the very least
+                    _logger.LogError(ex, "Connection {GuildId}: Failed to decode opus audio from {Ssrc}, skipping", Guild.Id, rtpHeader.Ssrc);
+                }
+
+                ArrayPool<byte>.Shared.Return(decryptedAudioArr);
                 await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
 
                 static void DecodeOpusAudio(ReadOnlySpan<byte> opusPacket, VoiceLinkUser voiceLinkUser, bool hasPacketLoss = false)
@@ -316,13 +345,13 @@ namespace DSharpPlus.VoiceLink
                     const int sampleRate = 48000; // 48 kHz
                     const double frameDuration = 0.020; // 20 milliseconds
                     const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
-                    const int bufferSize = frameSize * 2; // Stereo audio
+                    const int bufferSize = frameSize * 2 * sizeof(short); // Stereo audio + opus PCM units are 16 bits
 
                     // Allocate the buffer for the PCM data
                     Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
 
                     // Decode the Opus packet
-                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, hasPacketLoss);
+                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, frameSize, hasPacketLoss);
 
                     // Write the audio to the pipe
                     voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
