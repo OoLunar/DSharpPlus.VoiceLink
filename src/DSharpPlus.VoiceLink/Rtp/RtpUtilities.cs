@@ -76,6 +76,12 @@ namespace DSharpPlus.VoiceLink.Rtp
             };
         }
 
+        /// <summary>
+        /// Gets the length in bytes of an RTP header extension. The extension will prefix the RTP payload.
+        /// Use <see cref="RtpHeader.HasExtension"/> to determined whether an RTP packet includes an extension.
+        /// </summary>
+        /// <param name="rtpPayload">The RTP payload that is prefixed by a header extension.</param>
+        /// <returns>The byte length of the extension.</returns>
         public static ushort GetHeaderExtensionLength(ReadOnlySpan<byte> rtpPayload)
         {
             // offset by two to ignore the profile marker
