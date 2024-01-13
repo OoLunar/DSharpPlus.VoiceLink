@@ -2,8 +2,15 @@ using System;
 
 namespace DSharpPlus.VoiceLink.Opus
 {
-    public struct OpusDecoder : IDisposable
+    public readonly struct OpusDecoder : IDisposable
     {
+        private readonly IntPtr _state;
+
+        public OpusDecoder(IntPtr state)
+        {
+            _state = state;
+        }
+
         /// <inheritdoc cref="OpusNativeMethods.DecoderGetSize(int)"/>
         public static int GetSize(int channels) => OpusNativeMethods.DecoderGetSize(channels);
 
@@ -12,18 +19,16 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <inheritdoc cref="OpusNativeMethods.DecoderCreate(OpusSampleRate, int, out OpusErrorCode*)"/>
         public static unsafe OpusDecoder Create(OpusSampleRate sampleRate, int channels)
         {
-            OpusDecoder* decoder = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode* errorCode);
-            return (errorCode != default && *errorCode != OpusErrorCode.Ok) ? throw new OpusException(*errorCode) : *decoder;
+            IntPtr state = OpusNativeMethods.DecoderCreate(sampleRate, channels, out OpusErrorCode* errorCode);
+            return (errorCode != default && *errorCode != OpusErrorCode.Ok)
+                ? throw new OpusException(*errorCode)
+                : new OpusDecoder(state);
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.DecoderInit(OpusDecoder*, OpusSampleRate, int)"/>
-        public unsafe void Init(OpusSampleRate sampleRate, int channels)
+        /// <inheritdoc cref="OpusNativeMethods.DecoderInit(IntPtr, OpusSampleRate, int)"/>
+        public void Init(OpusSampleRate sampleRate, int channels)
         {
-            OpusErrorCode errorCode;
-            fixed (OpusDecoder* pinned = &this)
-            {
-                errorCode = OpusNativeMethods.DecoderInit(pinned, sampleRate, channels);
-            }
+            OpusErrorCode errorCode = OpusNativeMethods.DecoderInit(_state, sampleRate, channels);
 
             if (errorCode != OpusErrorCode.Ok)
             {
@@ -31,20 +36,19 @@ namespace DSharpPlus.VoiceLink.Opus
             }
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.Decode(OpusDecoder*, byte*, int, byte*, int, int)"/>
-        public unsafe int Decode(ReadOnlySpan<byte> data, Span<byte> pcm, bool decodeFec)
+        /// <inheritdoc cref="OpusNativeMethods.Decode(IntPtr, byte*, int, byte*, int, int)"/>
+        public unsafe int Decode(ReadOnlySpan<byte> data, Span<byte> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
-            fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
             fixed (byte* pcmPointer = pcm)
             {
                 decodedLength = OpusNativeMethods.Decode(
-                    pinned,
+                    _state,
                     dataPointer,
                     data.Length,
                     pcmPointer,
-                    OpusNativeMethods.PacketGetNbFrames(dataPointer, data.Length),
+                    frameSize,
                     decodeFec ? 1 : 0
                 );
             }
@@ -59,15 +63,14 @@ namespace DSharpPlus.VoiceLink.Opus
             return decodedLength * sizeof(short) * 2;
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(OpusDecoder*, byte*, int, float*, int, int)"/>
+        /// <inheritdoc cref="OpusNativeMethods.DecodeFloat(IntPtr, byte*, int, byte*, int, int)"/>
         public unsafe int DecodeFloat(ReadOnlySpan<byte> data, Span<byte> pcm, int frameSize, bool decodeFec)
         {
             int decodedLength;
-            fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
             fixed (byte* pcmPointer = pcm)
             {
-                decodedLength = OpusNativeMethods.DecodeFloat(pinned, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
+                decodedLength = OpusNativeMethods.DecodeFloat(_state, dataPointer, data.Length, pcmPointer, frameSize, decodeFec ? 1 : 0);
             }
 
             // Less than zero means an error occurred
@@ -81,14 +84,10 @@ namespace DSharpPlus.VoiceLink.Opus
             return decodedLength;
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.DecoderControl(OpusDecoder*, OpusControlRequest, int)"/>
-        public unsafe void Control(OpusControlRequest control, out int value)
+        /// <inheritdoc cref="OpusNativeMethods.DecoderControl(IntPtr, OpusControlRequest, out int)"/>
+        public void Control(OpusControlRequest control, out int value)
         {
-            OpusErrorCode errorCode;
-            fixed (OpusDecoder* pinned = &this)
-            {
-                errorCode = OpusNativeMethods.DecoderControl(pinned, control, out value);
-            }
+            OpusErrorCode errorCode = OpusNativeMethods.DecoderControl(_state, control, out value);
 
             if (errorCode != OpusErrorCode.Ok)
             {
@@ -96,13 +95,10 @@ namespace DSharpPlus.VoiceLink.Opus
             }
         }
 
-        /// <inheritdoc cref="OpusNativeMethods.DecoderDestroy(OpusDecoder*)"/>
-        public unsafe void Destroy()
+        /// <inheritdoc cref="OpusNativeMethods.DecoderDestroy(IntPtr)"/>
+        public void Destroy()
         {
-            fixed (OpusDecoder* pinned = &this)
-            {
-                OpusNativeMethods.DecoderDestroy(pinned);
-            }
+            OpusNativeMethods.DecoderDestroy(_state);
         }
 
         /// <summary>
@@ -111,14 +107,13 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <exception cref="ArgumentException">Invalid argument passed to the decoder.</exception>
         /// <exception cref="InvalidOperationException">The compressed data passed is corrupted or of an unsupported type or an unknown error occured.</exception>
         /// <returns>The number of samples per channel of a packet.</returns>
-        /// <inheritdoc cref="OpusNativeMethods.DecoderGetNbSamples(OpusDecoder*, byte*, int)"/>
+        /// <inheritdoc cref="OpusNativeMethods.DecoderGetNbSamples(IntPtr, byte*, int)"/>
         public unsafe int GetSampleCount(ReadOnlySpan<byte> data)
         {
             int sampleCount;
-            fixed (OpusDecoder* pinned = &this)
             fixed (byte* dataPointer = data)
             {
-                sampleCount = OpusNativeMethods.DecoderGetNbSamples(pinned, dataPointer, data.Length);
+                sampleCount = OpusNativeMethods.DecoderGetNbSamples(_state, dataPointer, data.Length);
             }
 
             // Less than zero means an error occurred
