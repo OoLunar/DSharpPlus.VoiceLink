@@ -322,7 +322,7 @@ namespace DSharpPlus.VoiceLink
                     Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
 
                     // Decode the Opus packet
-                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, hasPacketLoss);
+                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, frameSize, hasPacketLoss);
 
                     // Write the audio to the pipe
                     voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
