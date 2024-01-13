@@ -41,6 +41,7 @@ namespace DSharpPlus.VoiceLink
             BinaryPrimitives.WriteUInt16BigEndian(dataSpan[2..4], ipDiscovery.Length);
             BinaryPrimitives.WriteUInt32BigEndian(dataSpan[4..8], ipDiscovery.Ssrc);
             Encoding.UTF8.TryGetBytes(ipDiscovery.Address, dataSpan[8..72], out _);
+            dataSpan[71] = 0; // Need to null-terminate the IP string
             BinaryPrimitives.WriteUInt16BigEndian(dataSpan[72..74], ipDiscovery.Port);
 
             return data;
