@@ -5,9 +5,9 @@
     <Description>Provides the dynamic library files for Opus.</Description>
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
     <Authors>OoLunar, InFTord, Aaron2550</Authors>
-    <IsPackable>true</IsPackable>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="$(ProjectRoot)/libs/libopus/*" Pack="true" PackagePath="runtimes/$(TargetFramework)/native" />
+    <Content Include="$(ProjectRoot)/libs/libopus/*" CopyToOutputDirectory="Always" />
   </ItemGroup>
 </Project>

@@ -12,6 +12,7 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="$(ProjectRoot)/libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
     <PackageReference Include="System.IO.Pipelines" Version="8.0.0" />
     <PackageReference Include="Serilog" Version="3.1.1" />
@@ -19,8 +20,5 @@
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.Console" Version="5.0.1" />
     <PackageReference Include="Serilog.Sinks.File" Version="5.0.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="$(ProjectRoot)/libs/DSharpPlus/DSharpPlus/DSharpPlus.csproj" />
   </ItemGroup>
 </Project>

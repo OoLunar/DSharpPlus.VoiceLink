@@ -8,6 +8,6 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="$(ProjectRoot)/libs/libsodium/libsodium.so" Pack="true" PackagePath="lib/$(TargetFramework)/libsodium.so" />
+    <Content Include="$(ProjectRoot)/libs/libsodium/*" CopyToOutputDirectory="Always" />
   </ItemGroup>
 </Project>
