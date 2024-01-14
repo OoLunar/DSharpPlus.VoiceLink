@@ -1,8 +1,7 @@
 #!/bin/bash
 
 # Deps
-xbps-install -Syu > /dev/null
-xbps-install -y ImageMagick yarn > /dev/null
+apt-get install ImageMagick yarn > /dev/null
 yarn global add svgo > /dev/null
 
 # Functions
@@ -12,6 +11,9 @@ regenerate()
 
   # Optimize the SVG file
   svgo --multipass --quiet "$1"
+
+  # Small size for DocFX
+  convert -background none -resize 64x64 "$1" "${1%.*}_small.png"
 
   # Convert to PNG
   convert -background none "$1" "${1%.*}.png"
