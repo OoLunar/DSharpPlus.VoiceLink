@@ -1,5 +1,4 @@
 using System;
-using System.Buffers;
 using System.Collections.Generic;
 using System.IO.Pipelines;
 using System.Linq;
@@ -176,30 +175,15 @@ namespace DSharpPlus.VoiceLink
         internal static async ValueTask<T> ParseAsync<T>(this PipeReader reader, CancellationToken cancellationToken = default)
         {
             ReadResult result = await reader.ReadAsync(cancellationToken);
-            return result.IsCanceled ? throw new OperationCanceledException("The reader was canceled.") : await reader.ParseAsync<T>(result);
+            return result.IsCanceled ? throw new OperationCanceledException("The reader was canceled.") : reader.Parse<T>(result);
         }
 
-        internal static ValueTask<T> ParseAsync<T>(this PipeReader reader, ReadResult result)
+        internal static T Parse<T>(this PipeReader reader, ReadResult result)
         {
-            try
-            {
-                if (result.IsCompleted)
-                {
-                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(reader.AsStream(), VoiceLinkExtension.DefaultJsonSerializerOptions)!);
-                }
-                else if (result.Buffer.IsSingleSegment)
-                {
-                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(result.Buffer.FirstSpan, VoiceLinkExtension.DefaultJsonSerializerOptions)!);
-                }
-                else
-                {
-                    return ValueTask.FromResult(JsonSerializer.Deserialize<T>(result.Buffer.ToArray(), VoiceLinkExtension.DefaultJsonSerializerOptions)!);
-                }
-            }
-            finally
-            {
-                reader.AdvanceTo(result.Buffer.End);
-            }
+            Utf8JsonReader jsonReader = new(result.Buffer);
+            T value = JsonSerializer.Deserialize<T>(ref jsonReader, VoiceLinkExtension.DefaultJsonSerializerOptions)!;
+            reader.AdvanceTo(result.Buffer.GetPosition(jsonReader.BytesConsumed));
+            return value;
         }
     }
 }

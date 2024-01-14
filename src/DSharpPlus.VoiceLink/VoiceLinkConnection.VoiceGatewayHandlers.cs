@@ -39,7 +39,7 @@ namespace DSharpPlus.VoiceLink
         {
             // Start heartbeat
             connection._logger.LogDebug("Connection {GuildId}: Starting heartbeat...", connection.Guild.Id);
-            _ = connection.SendHeartbeatAsync((await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceHelloPayload>>(result)).Data);
+            _ = connection.SendHeartbeatAsync(connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceHelloPayload>>(result).Data);
 
             // Send Identify
             connection._logger.LogTrace("Connection {GuildId}: Sending identify...", connection.Guild.Id);
@@ -58,7 +58,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask ReadyAsync(VoiceLinkConnection connection, ReadResult result)
         {
-            VoiceReadyPayload voiceReadyPayload = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceReadyPayload>>(result)).Data;
+            VoiceReadyPayload voiceReadyPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceReadyPayload>>(result).Data;
 
             // Insert our SSRC code
             connection._logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", connection.Guild.Id, voiceReadyPayload.Ssrc);
@@ -97,7 +97,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask SessionDescriptionAsync(VoiceLinkConnection connection, ReadResult result)
         {
-            VoiceSessionDescriptionPayload sessionDescriptionPayload = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceSessionDescriptionPayload>>(result)).Data;
+            VoiceSessionDescriptionPayload sessionDescriptionPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceSessionDescriptionPayload>>(result).Data;
 
             // The secret key uses IEnumerable because any other Array-based type will cause STJ to interpret the bytes as Base64.
             connection._secretKey = sessionDescriptionPayload.SecretKey.ToArray();
@@ -114,7 +114,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask HeartbeatAckAsync(VoiceLinkConnection connection, ReadResult readResult)
         {
-            long heartbeat = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<long>>(readResult)).Data;
+            long heartbeat = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<long>>(readResult).Data;
             if (connection._heartbeatQueue.TryDequeue(out long unixTimestamp))
             {
                 connection.WebsocketPing = TimeSpan.FromMilliseconds(heartbeat - unixTimestamp);
@@ -134,7 +134,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask ClientConnectedAsync(VoiceLinkConnection connection, ReadResult result)
         {
-            VoiceUserJoinPayload voiceClientConnectedPayload = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserJoinPayload>>(result)).Data;
+            VoiceUserJoinPayload voiceClientConnectedPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceUserJoinPayload>>(result).Data;
             connection._logger.LogDebug("Connection {GuildId}: User {UserId} connected.", connection.Guild.Id, voiceClientConnectedPayload.UserId);
             await connection.Extension._userConnected.InvokeAsync(connection.Extension, new VoiceLinkUserEventArgs()
             {
@@ -145,7 +145,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask ClientDisconnectAsync(VoiceLinkConnection connection, ReadResult result)
         {
-            VoiceUserLeavePayload voiceClientDisconnectedPayload = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceUserLeavePayload>>(result)).Data;
+            VoiceUserLeavePayload voiceClientDisconnectedPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceUserLeavePayload>>(result).Data;
             connection._logger.LogDebug("Connection {GuildId}: User {UserId} disconnected.", connection.Guild.Id, voiceClientDisconnectedPayload.UserId);
 
             // We only receive a member's SSRC when they speak. This means they may not be within the speakers dictionary.
@@ -165,7 +165,7 @@ namespace DSharpPlus.VoiceLink
 
         private static async ValueTask SpeakingAsync(VoiceLinkConnection connection, ReadResult result)
         {
-            VoiceSpeakingPayload voiceSpeakingPayload = (await connection._websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch<VoiceSpeakingPayload>>(result)).Data;
+            VoiceSpeakingPayload voiceSpeakingPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceSpeakingPayload>>(result).Data;
             connection._logger.LogTrace("Connection {GuildId}: User {UserId} is speaking.", connection.Guild.Id, voiceSpeakingPayload.UserId);
 
             // Sometimes we receive the voice data over the UDP connection before we receive the speaking payload.
