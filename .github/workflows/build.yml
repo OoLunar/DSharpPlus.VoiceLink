@@ -14,6 +14,7 @@ on:
         - 'libs/**'
         - 'examples/**'
         - 'tools/**'
+  workflow_dispatch:
 
 env:
   DOTNET_NOLOGO: 1
