@@ -39,7 +39,7 @@ namespace DSharpPlus.VoiceLink.Opus
         /// <param name="decoder">Decoder state.</param>
         /// <param name="data">Input payload. Use a <see cref="IntPtr.Zero"/> (<see langword="null"/>) pointer to indicate packet loss.</param>
         /// <param name="length">Number of bytes in <paramref name="data"/>.</param>
-        /// <param name="pcm">Output signal (interleaved if 2 channels). Length is frame_size * channels * sizeof(<see cref="Int16"/>)</param>
+        /// <param name="pcm">Output signal (interleaved if 2 channels). Length is frame_size * channels * sizeof(<see cref="short"/>)</param>
         /// <param name="frameSize">Number of samples per channel of available space in <paramref name="pcm"/>. If this is less than the maximum packet duration (120ms; 5760 for 48kHz), this function will not be capable of decoding some packets. In the case of PLC (<paramref name="data"/> is <see langword="null"/>) or FEC (<paramref name="decodeFec"/> is <see langword="true"/>), then <paramref name="frameSize"/> needs to be exactly the duration of audio that is missing, otherwise the decoder will not be in the optimal state to decode the next incoming packet. For the PLC and FEC cases, <paramref name="frameSize"/> must be a multiple of 2.5 ms.</param>
         /// <param name="decodeFec">Flag (0 or 1) to request that any in-band forward error correction data be decoded. If no such data is available, the frame is decoded as if it were lost.</param>
         /// <returns>Number of decoded samples or an <see cref="OpusErrorCode"/></returns>
