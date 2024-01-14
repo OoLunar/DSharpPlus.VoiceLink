@@ -10,15 +10,16 @@ namespace DSharpPlus.VoiceLink.Rtp
     {
         public const byte VersionWithExtension = 0x90;
         public const byte Version = 0x80;
-        public const byte PayloadType = 0x78;
-        public static readonly byte[] RtpExtensionOneByte = [190, 222];
+        public const byte DiscordPayloadType = 0x78;
+        public const int HeaderSize = 12;
+        public static readonly byte[] RtpExtensionOneByte = [0xBE, 0xDE];
 
         /// <summary>
         /// Determines if the given buffer contains a valid RTP header.
         /// </summary>
         /// <param name="source">The data to reference.</param>
         /// <returns>Whether the data contains a valid RTP header.</returns>
-        public static bool IsRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && (source[0] == Version || source[0] == VersionWithExtension) && source[1] == PayloadType;
+        public static bool IsRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && (source[0] == Version || source[0] == VersionWithExtension) && source[1] == DiscordPayloadType;
 
         /// <summary>
         /// Encodes a RTP header into the given buffer.
@@ -37,7 +38,7 @@ namespace DSharpPlus.VoiceLink.Rtp
 
             target.Clear();
             target[0] = Version;
-            target[1] = PayloadType;
+            target[1] = DiscordPayloadType;
             BinaryPrimitives.WriteUInt16BigEndian(target[2..4], sequence);
             BinaryPrimitives.WriteUInt32BigEndian(target[4..8], timestamp);
             BinaryPrimitives.WriteUInt32BigEndian(target[8..12], ssrc);
@@ -57,11 +58,11 @@ namespace DSharpPlus.VoiceLink.Rtp
             {
                 throw new ArgumentException("The source buffer must have a minimum of 12 bytes for it to be a RTP header.", nameof(source));
             }
-            else if (source[0] != Version && source[0] != VersionWithExtension)
+            else if (source[0] is not Version and not VersionWithExtension)
             {
                 throw new ArgumentException("The source buffer contains an unknown RTP header version.", nameof(source));
             }
-            else if (source[1] != PayloadType)
+            else if (source[1] is not DiscordPayloadType)
             {
                 throw new ArgumentException("The source buffer contains an unknown RTP header type.", nameof(source));
             }
@@ -83,9 +84,7 @@ namespace DSharpPlus.VoiceLink.Rtp
         /// <param name="rtpPayload">The RTP payload that is prefixed by a header extension.</param>
         /// <returns>The byte length of the extension.</returns>
         public static ushort GetHeaderExtensionLength(ReadOnlySpan<byte> rtpPayload)
-        {
             // offset by two to ignore the profile marker
-            return BinaryPrimitives.ReadUInt16BigEndian(rtpPayload[2..]);
-        }
+            => BinaryPrimitives.ReadUInt16BigEndian(rtpPayload[2..]);
     }
 }
