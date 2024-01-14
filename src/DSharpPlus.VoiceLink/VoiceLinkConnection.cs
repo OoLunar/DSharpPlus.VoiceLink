@@ -199,6 +199,7 @@ namespace DSharpPlus.VoiceLink
                 {
                     // Attempt to reconnect and resume. If that fails then restart the connection entirely.
                     _logger.LogWarning("Connection {GuildId}: Websocket closed, attempting to resume...", Guild.Id);
+                    _webSocket.Abort();
                     await _webSocket.ConnectAsync(_endpoint!, _cancellationTokenSource.Token);
                     await _webSocket.SendAsync(new DiscordVoiceResumingCommand()
                     {
