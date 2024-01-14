@@ -1,6 +1,6 @@
-[submodule "libs/DSharpPlus"]
-	path = libs/DSharpPlus
-	url = git@github.com:OoLunar/DSharpPlus.git
 [submodule "libs/SingulinkFX"]
 	path = libs/SingulinkFX
 	url = git@github.com:Singulink/SingulinkFX.git
+[submodule "libs/DSharpPlus"]
+	path = libs/DSharpPlus
+	url = git@github.com:DSharpPlus/DSharpPlus.git
