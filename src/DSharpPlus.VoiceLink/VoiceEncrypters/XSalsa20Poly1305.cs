@@ -1,5 +1,6 @@
 using System;
 using DSharpPlus.VoiceLink.Enums;
+using DSharpPlus.VoiceLink.Rtp;
 using DSharpPlus.VoiceLink.Sodium;
 
 namespace DSharpPlus.VoiceLink.VoiceEncrypters
@@ -59,6 +60,26 @@ namespace DSharpPlus.VoiceLink.VoiceEncrypters
 
             // Decrypt the data
             return SodiumXSalsa20Poly1305.Decrypt(data[12..], key, nonce, target) == 0;
+        }
+
+        public bool TryDecryptReportPacket(RtcpHeader header, ReadOnlySpan<byte> data, ReadOnlySpan<byte> key, Span<byte> target)
+        {
+            if (data.Length < SodiumXSalsa20Poly1305.MacSize)
+            {
+                throw new ArgumentException($"The data must have a minimum size of {SodiumXSalsa20Poly1305.MacSize} bytes.", nameof(data));
+            }
+            else if (key.Length < SodiumXSalsa20Poly1305.KeySize)
+            {
+                throw new ArgumentException($"The secret key must have a minimum size of {SodiumXSalsa20Poly1305.KeySize} bytes.", nameof(key));
+            }
+            else if (target.Length < GetDecryptedSize(data.Length))
+            {
+                throw new ArgumentException($"Target buffer must have a minimum size of {GetDecryptedSize(data.Length)} bytes.", nameof(target));
+            }
+
+            Span<byte> nonce = stackalloc byte[SodiumXSalsa20Poly1305.NonceSize];
+            data[..8].CopyTo(nonce);
+            return SodiumXSalsa20Poly1305.Decrypt(data[8..], key, nonce, target) == 0;
         }
     }
 }
