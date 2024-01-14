@@ -4,8 +4,10 @@ using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO.Pipelines;
+using System.Linq;
 using System.Net.Sockets;
 using System.Net.WebSockets;
+using System.Text;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
@@ -16,7 +18,6 @@ using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Payloads;
 using DSharpPlus.VoiceLink.Rtp;
-using DSharpPlus.VoiceLink.Sodium;
 using DSharpPlus.VoiceLink.VoiceEncrypters;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -151,7 +152,7 @@ namespace DSharpPlus.VoiceLink
 
         private async Task StartVoiceGatewayAsync()
         {
-            static VoiceOpCode ParseVoiceOpCode(ReadResult readResult)
+            VoiceOpCode ParseVoiceOpCode(ReadResult readResult)
             {
                 Utf8JsonReader utf8JsonReader = new(readResult.Buffer);
                 while (utf8JsonReader.Read())
@@ -164,7 +165,9 @@ namespace DSharpPlus.VoiceLink
                     return (VoiceOpCode)utf8JsonReader.GetInt32();
                 }
 
-                throw new InvalidOperationException("Could not find op code.");
+                _logger.LogError("Connection {GuildId}: Op code was not included within the payload. Did the payload structure change?", Guild.Id);
+                _logger.LogError("Connection {GuildId}: Payload:\n{Payload}", Guild.Id, Encoding.UTF8.GetString(readResult.Buffer));
+                throw new InvalidOperationException("Op code was not included within the payload.");
             }
 
             while (!_cancellationTokenSource.IsCancellationRequested)
@@ -204,10 +207,10 @@ namespace DSharpPlus.VoiceLink
                         Token = _voiceToken!
                     }, _cancellationTokenSource.Token);
                 }
-                catch (Exception ex)
+                catch (Exception error)
                 {
                     // We need to catch and log all errors here because this task method is not watched
-                    _logger.LogError(ex, "Unexpected failure on voice websocket");
+                    _logger.LogError(error, "Connection {GuildId}: Unexpected exception on the voice gateway loop. Please report this as a bug!", Guild.Id);
                     throw;
                 }
             }
@@ -228,12 +231,11 @@ namespace DSharpPlus.VoiceLink
                 long unixTimestamp = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
                 _heartbeatQueue.Enqueue(unixTimestamp);
                 _logger.LogTrace("Connection {GuildId}: Sending heartbeat {UnixTimestamp}...", Guild.Id, unixTimestamp);
-
                 await _webSocket.SendAsync(new VoiceGatewayDispatch()
                 {
                     OpCode = VoiceOpCode.Heartbeat,
                     Data = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()
-                }, default);
+                });
             }
         }
 
@@ -245,118 +247,122 @@ namespace DSharpPlus.VoiceLink
                 // This is a hotpath. Any modifications to this code should always
                 // lead to equal or better performance. If you're not sure, don't touch it.
                 UdpReceiveResult udpReceiveResult = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
-
-                // RTP Header. Additionally packets with a length of 48 bytes are spammed to us, however we don't know what they are.
-                // We suspect them to be RTCP receiver reports, however we cannot find a way to decode them.
-                if (!RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
+                if (RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
                 {
-                    if (!RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
+                    // When the VoiceLinkUser is not null, this means that voice data was
+                    // successfully decrypted and decoded and is ready to be consumed by the dev.
+                    VoiceLinkUser? voiceLinkUser = HandleRtpVoicePacket(udpReceiveResult.Buffer);
+                    if (voiceLinkUser is not null)
                     {
-                        _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
-                        continue;
+                        await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
                     }
-
-                    RtcpHeader header = RtcpUtilities.DecodeHeader(udpReceiveResult.Buffer);
-                    Memory<byte> data = udpReceiveResult.Buffer;
-                    Memory<byte> nonce = ArrayPool<byte>.Shared.Rent(24);
-                    data[^4..].CopyTo(nonce);
-
-                    Memory<byte> payload = data[8..^4];
-                    Memory<byte> result = ArrayPool<byte>.Shared.Rent(udpReceiveResult.Buffer.Length - SodiumXSalsa20Poly1305.MacSize);
-                    if (SodiumXSalsa20Poly1305.Decrypt(payload.Span, _secretKey, nonce.Span, result.Span) != 0)
-                    {
-                        //_logger.LogWarning("Connection {GuildId}: Failed to decrypt rtcp receiver report packet, skipping.", Guild.Id);
-                        continue;
-                    }
-
-                    RtcpReceiverReportPacket receiverReportPacket = new(header, payload.Span);
-                    _logger.LogTrace("Connection {GuildId}: Received RTCP receiver report packet: {ReceiverReportPacket}", Guild.Id, receiverReportPacket);
-                    ArrayPool<byte>.Shared.Return(nonce.ToArray());
-                    ArrayPool<byte>.Shared.Return(result.ToArray());
-                    continue;
                 }
-
-                RtpHeader rtpHeader = RtpUtilities.DecodeHeader(udpReceiveResult.Buffer);
-                if (rtpHeader.PayloadType != 120)
+                else if (RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
                 {
-                    _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a payload type of {PayloadType}. Skipping.", Guild.Id, rtpHeader.PayloadType);
-                    continue;
+                    HandleRtcpReceiverReportPacket(udpReceiveResult.Buffer);
                 }
-
-                if (rtpHeader.HasMarker)
+                else
                 {
-                    // All clients send a marker bit when they first connect. For now we're just going to ignore this.
-                    continue;
+                    _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
+                    _logger.LogDebug("Connection {GuildId}: Packet: {Packet}", Guild.Id, udpReceiveResult.Buffer.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
                 }
+            }
+        }
 
-                if (!_speakers.TryGetValue(rtpHeader.Ssrc, out VoiceLinkUser? voiceLinkUser))
-                {
-                    // Create a new user if we don't have one
-                    // We're explicitly passing a null member, however the dev should never expect this to
-                    // be null as the speaking event should always fire once we receive both the user and the ssrc.
-                    // TL;DR, this is to ensure we never lose any audio data.
-                    voiceLinkUser = new(this, rtpHeader.Ssrc, null!);
-                    _speakers.Add(rtpHeader.Ssrc, voiceLinkUser);
-                }
+        private void HandleRtcpReceiverReportPacket(byte[] buffer)
+        {
+            RtcpHeader header = RtcpUtilities.DecodeHeader(buffer);
 
-                // Decrypt the audio
-                int decryptedBufferSize = _voiceEncrypter.GetDecryptedSize(udpReceiveResult.Buffer.Length);
-                byte[] decryptedAudioArr = ArrayPool<byte>.Shared.Rent(decryptedBufferSize);
-                Memory<byte> decryptedAudio = decryptedAudioArr.AsMemory(0, decryptedBufferSize);
+            // Decrypt the audio
+            int decryptedBufferSize = _voiceEncrypter.GetDecryptedSize(buffer.Length);
 
-                if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, udpReceiveResult.Buffer, _secretKey, decryptedAudio.Span))
-                {
-                    _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}, skipping.", Guild.Id, rtpHeader.Ssrc);
-                    ArrayPool<byte>.Shared.Return(decryptedAudioArr);
-                    continue;
-                }
+            // Allocate the buffer for the decrypted audio
+            byte[] decryptedAudioArray = ArrayPool<byte>.Shared.Rent(decryptedBufferSize);
 
-                // Strip any RTP header extensions. See https://www.rfc-editor.org/rfc/rfc3550#section-5.3.1
-                // Discord currently uses a generic profile marker of [0xbe, 0xde], see
-                // https://www.rfc-editor.org/rfc/rfc8285#section-4.2
-                if (rtpHeader.HasExtension)
-                {
-                    ushort extensionLength = RtpUtilities.GetHeaderExtensionLength(decryptedAudio.Span);
-                    decryptedAudio = decryptedAudio[(4 + 4 * extensionLength)..];
-                }
+            // Trimmed to the decrypted buffer size. Separate variable so
+            // we can return the complete array to the pool at full length.
+            Span<byte> decryptedAudio = decryptedAudioArray.AsSpan(0, decryptedBufferSize);
+            if (!_voiceEncrypter.TryDecryptReportPacket(header, buffer, _secretKey, decryptedAudio))
+            {
+                _logger.LogWarning("Connection {GuildId}: Failed to decrypt RTCP Receiver Report packet for {Ssrc}. Skipping.", Guild.Id, header.Ssrc);
+                ArrayPool<byte>.Shared.Return(decryptedAudioArray);
+                return;
+            }
+
+            RtcpReceiverReportPacket receiverReportPacket = new(header, decryptedAudio);
+            _logger.LogTrace("Connection {GuildId}: Received RTCP Receiver Report packet: {ReceiverReportPacket}", Guild.Id, receiverReportPacket);
+            ArrayPool<byte>.Shared.Return(decryptedAudioArray);
+        }
+
+        private VoiceLinkUser? HandleRtpVoicePacket(byte[] buffer)
+        {
+            RtpHeader rtpHeader = RtpUtilities.DecodeHeader(buffer);
+            if (!_speakers.TryGetValue(rtpHeader.Ssrc, out VoiceLinkUser? voiceLinkUser))
+            {
+                // Create a new user if we don't have one
+                // We're explicitly passing a null member, however the dev should never expect this to
+                // be null as the speaking event should always fire once we receive both the user and the ssrc.
+                // TL;DR, this is to ensure we never lose any audio data.
+                voiceLinkUser = new(this, rtpHeader.Ssrc, null!);
+                _speakers.Add(rtpHeader.Ssrc, voiceLinkUser);
+            }
+
+            // Decrypt the audio
+            int decryptedBufferSize = _voiceEncrypter.GetDecryptedSize(buffer.Length);
+
+            // Allocate the buffer for the decrypted audio
+            byte[] decryptedAudioArray = ArrayPool<byte>.Shared.Rent(decryptedBufferSize);
+
+            // Trimmed to the decrypted buffer size. Separate variable so
+            // we can return the complete array to the pool at full length.
+            Span<byte> decryptedAudio = decryptedAudioArray.AsSpan(0, decryptedBufferSize);
+            if (!_voiceEncrypter.TryDecryptOpusPacket(voiceLinkUser, buffer, _secretKey, decryptedAudio))
+            {
+                _logger.LogWarning("Connection {GuildId}: Failed to decrypt audio from {Ssrc}. Skipping.", Guild.Id, rtpHeader.Ssrc);
+                ArrayPool<byte>.Shared.Return(decryptedAudioArray);
+                return null;
+            }
+
+            // Strip any RTP header extensions. See https://www.rfc-editor.org/rfc/rfc3550#section-5.3.1
+            // Discord currently uses a generic profile marker of [0xbe, 0xde]. See
+            // https://www.rfc-editor.org/rfc/rfc8285#section-4.2
+            if (rtpHeader.HasExtension)
+            {
+                ushort extensionLength = RtpUtilities.GetHeaderExtensionLength(decryptedAudio);
+                decryptedAudio = decryptedAudio[(4 + (4 * extensionLength))..];
+            }
+
+            // Decode the audio
+            try
+            {
+                // Calculate the frame size and buffer size
+                const int sampleRate = 48000; // 48 kHz
+                const double frameDuration = 0.020; // 20 milliseconds
+                const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
+                const int bufferSize = frameSize * 2 * sizeof(short); // Stereo audio + opus PCM units are 16 bits
 
                 // TODO: Handle FEC (Forward Error Correction) aka packet loss.
                 // * https://tools.ietf.org/html/rfc5109
-                bool hasDataLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
+                bool hasPacketLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
 
-                // Decode the audio
-                try
-                {
-                    DecodeOpusAudio(decryptedAudio.Span, voiceLinkUser, hasDataLoss);
-                }
-                catch (Exception ex)
-                {
-                    // TODO: Should this be a reason to terminate the connection?
-                    // definitely should if a few in a row fail, at the very least
-                    _logger.LogError(ex, "Connection {GuildId}: Failed to decode opus audio from {Ssrc}, skipping", Guild.Id, rtpHeader.Ssrc);
-                }
+                // Allocate the buffer for the PCM data
+                Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
 
-                ArrayPool<byte>.Shared.Return(decryptedAudioArr);
-                await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
+                // Decode the Opus packet
+                voiceLinkUser._opusDecoder.Decode(decryptedAudio, audioBuffer, frameSize, hasPacketLoss);
 
-                static void DecodeOpusAudio(ReadOnlySpan<byte> opusPacket, VoiceLinkUser voiceLinkUser, bool hasPacketLoss = false)
-                {
-                    // Calculate the frame size and buffer size
-                    const int sampleRate = 48000; // 48 kHz
-                    const double frameDuration = 0.020; // 20 milliseconds
-                    const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
-                    const int bufferSize = frameSize * 2 * sizeof(short); // Stereo audio + opus PCM units are 16 bits
-
-                    // Allocate the buffer for the PCM data
-                    Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
-
-                    // Decode the Opus packet
-                    voiceLinkUser._opusDecoder.Decode(opusPacket, audioBuffer, frameSize, hasPacketLoss);
-
-                    // Write the audio to the pipe
-                    voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
-                }
+                // Write the audio to the pipe
+                voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
             }
+            catch (Exception error)
+            {
+                // TODO: Should this be a reason to terminate the connection?
+                // definitely should if a few in a row fail, at the very least
+                _logger.LogError(error, "Connection {GuildId}: Failed to decode opus audio from {Ssrc}. Skipping", Guild.Id, rtpHeader.Ssrc);
+            }
+
+            ArrayPool<byte>.Shared.Return(decryptedAudioArray);
+            return voiceLinkUser;
         }
     }
 }
