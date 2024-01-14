@@ -1,0 +1,7 @@
+version: "3.9"
+
+services:
+  voicelink_example:
+    build: .
+    restart: unless-stopped
+    env_file: .env

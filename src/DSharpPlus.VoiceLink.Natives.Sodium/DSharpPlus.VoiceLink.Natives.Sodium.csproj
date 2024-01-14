@@ -5,13 +5,9 @@
     <Description>Provides the dynamic library files for Sodium.</Description>
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
     <Authors>OoLunar, InFTord, Aaron2550</Authors>
-    <PackageProjectUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</PackageProjectUrl>
-    <RepositoryUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</RepositoryUrl>
-    <RepositoryType>Git</RepositoryType>
-    <PackageLicenseFile>LICENSE</PackageLicenseFile>
+    <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="../../LICENSE" Pack="true" PackagePath="" />
-    <Content Include="../../libs/libsodium/*" Pack="true" PackagePath="lib/$(TargetFramework)" />
+    <Content Include="$(ProjectRoot)/libs/libsodium/libsodium.so" Pack="true" PackagePath="lib/$(TargetFramework)/libsodium.so" />
   </ItemGroup>
 </Project>
