@@ -4,11 +4,11 @@
     <TargetFramework>net8.0</TargetFramework>
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/DSharpPlus.VoiceLink/DSharpPlus.VoiceLink.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <PackageReference Include="Matroska" Version="0.0.9" />
+    <ProjectReference Include="$(ProjectRoot)/src/DSharpPlus.VoiceLink/DSharpPlus.VoiceLink.csproj" />
+    <ProjectReference Include="$(ProjectRoot)/src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj" />
+    <ProjectReference Include="$(ProjectRoot)/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj" />
   </ItemGroup>
 </Project>
