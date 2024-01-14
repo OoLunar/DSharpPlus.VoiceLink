@@ -185,7 +185,7 @@ namespace DSharpPlus.VoiceLink
                     }
 
                     // Unknown voice op code, likely undocumented.
-                    VoiceGatewayDispatch voiceGatewayDispatch = await _websocketPipe.Reader.ParseAsync<VoiceGatewayDispatch>(readResult);
+                    VoiceGatewayDispatch voiceGatewayDispatch = _websocketPipe.Reader.Parse<VoiceGatewayDispatch>(readResult);
                     _logger.LogWarning("Connection {GuildId}: Unknown voice op code {VoiceOpCode}: {VoiceGatewayDispatch}", Guild.Id, voiceGatewayDispatch.OpCode, voiceGatewayDispatch.Data);
                 }
                 catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is WebSocketState.Connecting)
