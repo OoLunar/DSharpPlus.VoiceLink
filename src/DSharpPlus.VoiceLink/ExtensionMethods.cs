@@ -124,7 +124,7 @@ namespace DSharpPlus.VoiceLink
         /// Retrieves the <see cref="VoiceLinkExtension"/> from the <see cref="DiscordClient"/>.
         /// </summary>
         /// <param name="client">The client to retrieve the extension from.</param>
-        public static VoiceLinkExtension? GetVoiceLinkExtension(this DiscordClient client) => client is null
+        public static VoiceLinkExtension GetVoiceLinkExtension(this DiscordClient client) => client is null
             ? throw new ArgumentNullException(nameof(client))
             : client.GetExtension<VoiceLinkExtension>();
 
@@ -139,11 +139,7 @@ namespace DSharpPlus.VoiceLink
             Dictionary<int, VoiceLinkExtension> extensions = [];
             foreach (DiscordClient shard in shardedClient.ShardClients.Values)
             {
-                VoiceLinkExtension? extension = shard.GetExtension<VoiceLinkExtension>();
-                if (extension is not null)
-                {
-                    extensions[shard.ShardId] = extension;
-                }
+                extensions[shard.ShardId] = shard.GetExtension<VoiceLinkExtension>();
             }
 
             return extensions.AsReadOnly();
