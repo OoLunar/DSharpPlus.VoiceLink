@@ -24,11 +24,11 @@ using Microsoft.Extensions.Logging;
 
 namespace DSharpPlus.VoiceLink
 {
-    public sealed partial class VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, VoiceState voiceState)
+    public sealed partial class VoiceLinkConnection
     {
-        public VoiceState VoiceState { get; init; } = voiceState;
-        public VoiceLinkExtension Extension { get; init; } = extension;
-        public DiscordChannel Channel { get; init; } = channel;
+        public VoiceState VoiceState { get; init; }
+        public VoiceLinkExtension Extension { get; init; }
+        public DiscordChannel Channel { get; init; }
         public DiscordGuild Guild => Channel.Guild;
         public DiscordClient Client => Extension.Client;
         public DiscordUser User => Client.CurrentUser;
@@ -38,10 +38,10 @@ namespace DSharpPlus.VoiceLink
         public TimeSpan UdpPing { get; private set; }
 
         // Audio processing
-        private ILogger<VoiceLinkConnection> _logger { get; init; } = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
+        private ILogger<VoiceLinkConnection> _logger { get; init; }
         private CancellationTokenSource _cancellationTokenSource { get; init; } = new();
         private Dictionary<uint, VoiceLinkUser> _speakers { get; init; } = [];
-        private IVoiceEncrypter _voiceEncrypter { get; init; } = extension.Configuration.VoiceEncrypter;
+        private IVoiceEncrypter _voiceEncrypter { get; init; }
         private byte[] _secretKey { get; set; } = [];
         private Pipe _audioPipe { get; init; } = new();
 
@@ -54,6 +54,15 @@ namespace DSharpPlus.VoiceLink
         private string? _sessionId { get; set; }
         private string? _voiceToken { get; set; }
         private SemaphoreSlim _readySemaphore { get; init; } = new(0, 1);
+
+        public VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, VoiceState voiceState)
+        {
+            VoiceState = voiceState;
+            Extension = extension;
+            Channel = channel;
+            _logger = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
+            _voiceEncrypter = extension.Configuration.VoiceEncrypter;
+        }
 
         public async ValueTask ReconnectAsync()
         {
