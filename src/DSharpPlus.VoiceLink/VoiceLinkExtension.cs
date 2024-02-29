@@ -151,6 +151,7 @@ namespace DSharpPlus.VoiceLink
             _logger.LogDebug("Received voice state and voice server update events for guild {GuildId}.", channel.Guild.Id);
 
             VoiceLinkConnection connection = new(this, channel, voiceState);
+            _connections[channel.Guild.Id] = connection;
             await connection.InitializeAsync(pendingConnection.VoiceStateUpdateEventArgs!, pendingConnection.VoiceServerUpdateEventArgs!, cancellationToken);
             return connection;
         }
