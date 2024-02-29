@@ -46,14 +46,14 @@ namespace DSharpPlus.VoiceLink
         private Pipe _audioPipe { get; init; } = new();
 
         // Networking
-        private ClientWebSocket _webSocket { get; init; } = new();
-        private Pipe _websocketPipe { get; init; } = new();
-        private UdpClient _udpClient { get; init; } = new();
-        private ConcurrentQueue<long> _heartbeatQueue { get; init; } = new();
+        private readonly Pipe _websocketPipe = new();
+        private readonly UdpClient _udpClient = new();
+        private readonly ConcurrentQueue<long> _heartbeatQueue = new();
+        private readonly SemaphoreSlim _readySemaphore = new(0, 1);
+        private ClientWebSocket _webSocket = new();
         private Uri? _endpoint { get; set; }
         private string? _sessionId { get; set; }
         private string? _voiceToken { get; set; }
-        private SemaphoreSlim _readySemaphore { get; init; } = new(0, 1);
 
         public VoiceLinkConnection(VoiceLinkExtension extension, DiscordChannel channel, VoiceState voiceState)
         {
@@ -64,13 +64,34 @@ namespace DSharpPlus.VoiceLink
             _voiceEncrypter = extension.Configuration.VoiceEncrypter;
         }
 
-        public async ValueTask ReconnectAsync()
+        public async ValueTask DisconnectAsync()
         {
+#pragma warning disable CS0618 // Type or member is obsolete
+            await Client.SendPayloadAsync(GatewayOpCode.VoiceStateUpdate, new VoiceLinkStateCommand()
+            {
+                GuildId = Channel.Guild.Id,
+                ChannelId = null,
+                UserId = Client.CurrentUser.Id,
+                Member = Optional.FromNoValue<DiscordMember>(),
+                SessionId = string.Empty,
+                Deaf = VoiceState.HasFlag(VoiceState.ServerDeafened),
+                Mute = VoiceState.HasFlag(VoiceState.ServerMuted),
+                SelfDeaf = VoiceState.HasFlag(VoiceState.UserDeafened),
+                SelfMute = VoiceState.HasFlag(VoiceState.UserMuted),
+                SelfStream = Optional.FromNoValue<bool>(),
+                SelfVideo = false,
+                Suppress = false,
+                RequestToSpeakTimestamp = null
+            });
+#pragma warning restore CS0618 // Type or member is obsolete
+
+            await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Disconnecting", _cancellationTokenSource.Token);
+            _webSocket.Abort();
+            _webSocket.Dispose();
+            _udpClient.Close();
+
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource.TryReset();
-
-            _webSocket.Dispose();
-            _webSocket.Abort();
 
             _websocketPipe.Reader.CancelPendingRead();
             _websocketPipe.Writer.CancelPendingFlush();
@@ -78,7 +99,29 @@ namespace DSharpPlus.VoiceLink
             _websocketPipe.Writer.Complete();
             _websocketPipe.Reset();
 
+            _speakers.Clear();
+            _heartbeatQueue.Clear();
+            WebsocketPing = TimeSpan.Zero;
+            UdpPing = TimeSpan.Zero;
+
+            await Extension._connectionDestroyed.InvokeAsync(Extension, new(this));
+            Extension._connections.TryRemove(Guild.Id, out _);
+        }
+
+        public async ValueTask ReconnectAsync()
+        {
+            await _webSocket.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", _cancellationTokenSource.Token);
             _udpClient.Close();
+
+            _cancellationTokenSource.Cancel();
+            _cancellationTokenSource.TryReset();
+
+            _websocketPipe.Reader.CancelPendingRead();
+            _websocketPipe.Writer.CancelPendingFlush();
+            _websocketPipe.Reader.Complete();
+            _websocketPipe.Writer.Complete();
+            _websocketPipe.Reset();
+
             _speakers.Clear();
             _heartbeatQueue.Clear();
             WebsocketPing = TimeSpan.Zero;
@@ -204,11 +247,23 @@ namespace DSharpPlus.VoiceLink
                     await ReconnectAsync();
                     return;
                 }
+                catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is WebSocketState.CloseReceived)
+                {
+                    _logger.LogDebug("Connection {GuildId}: Disconnected from voice channel, closing the connection...", Guild.Id);
+                    await DisconnectAsync();
+                    return;
+                }
+                catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is WebSocketState.CloseSent or WebSocketState.Closed)
+                {
+                    // We requested to close the connection, so we should just return.
+                    return;
+                }
                 catch (VoiceLinkWebsocketClosedException) when (_webSocket.State is not WebSocketState.Open)
                 {
                     // Attempt to reconnect and resume. If that fails then restart the connection entirely.
                     _logger.LogWarning("Connection {GuildId}: Websocket closed, attempting to resume...", Guild.Id);
                     _webSocket.Abort();
+                    _webSocket = new ClientWebSocket();
                     await _webSocket.ConnectAsync(_endpoint!, _cancellationTokenSource.Token);
                     await _webSocket.SendAsync(new DiscordVoiceResumingCommand()
                     {
@@ -216,6 +271,11 @@ namespace DSharpPlus.VoiceLink
                         SessionId = _sessionId!,
                         Token = _voiceToken!
                     }, _cancellationTokenSource.Token);
+                }
+                catch (TaskCanceledException) when (_webSocket.State is WebSocketState.CloseSent)
+                {
+                    // We requested to close the connection, so we should just return.
+                    return;
                 }
                 catch (Exception error)
                 {
