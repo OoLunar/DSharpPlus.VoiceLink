@@ -19,26 +19,21 @@ namespace DSharpPlus.VoiceLink
         internal Pipe _audioPipe { get; init; } = new();
         internal OpusDecoder _opusDecoder { get; init; } = OpusDecoder.Create(OpusSampleRate.Opus48000Hz, 2);
         internal ushort _lastSequence;
-        private bool _sequenceInitialized;
 
-        public VoiceLinkUser(VoiceLinkConnection connection, uint ssrc, DiscordMember member)
+        public VoiceLinkUser(VoiceLinkConnection connection, uint ssrc, DiscordMember member, ushort sequence = 0)
         {
             Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             Ssrc = ssrc;
             Member = member;
+            _lastSequence = sequence;
         }
 
-        public bool UpdateSequence(ushort sequence)
+        internal bool UpdateSequence(ushort sequence)
         {
             bool hasPacketLoss = unchecked(++_lastSequence) != sequence;
             if (hasPacketLoss)
             {
                 _lastSequence = sequence;
-                if (!_sequenceInitialized)
-                {
-                    _sequenceInitialized = true;
-                    hasPacketLoss = false;
-                }
             }
 
             return hasPacketLoss;
