@@ -154,6 +154,7 @@ namespace DSharpPlus.VoiceLink
             if (connection._speakers.FirstOrDefault(x => x.Value.Member.Id == voiceClientDisconnectedPayload.UserId) is KeyValuePair<uint, VoiceLinkUser> kvp)
             {
                 connection._speakers.Remove(kvp.Key);
+                kvp.Value._audioPipe.Writer.Complete();
             }
 
             await connection.Extension._userDisconnected.InvokeAsync(connection.Extension, new VoiceLinkUserEventArgs()
@@ -173,7 +174,8 @@ namespace DSharpPlus.VoiceLink
             // When we receive the speaking payload, we update the user's member object.
             if (!connection._speakers.TryGetValue(voiceSpeakingPayload.Ssrc, out VoiceLinkUser? voiceLinkUser))
             {
-                connection._speakers.Add(voiceSpeakingPayload.Ssrc, new(connection, voiceSpeakingPayload.Ssrc, await connection.Guild.GetMemberAsync(voiceSpeakingPayload.UserId)));
+                voiceLinkUser = new(connection, voiceSpeakingPayload.Ssrc, await connection.Guild.GetMemberAsync(voiceSpeakingPayload.UserId));
+                connection._speakers.TryAdd(voiceSpeakingPayload.Ssrc, voiceLinkUser);
             }
             else
             {
