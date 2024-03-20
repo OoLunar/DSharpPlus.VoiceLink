@@ -14,6 +14,7 @@ using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Net.Abstractions;
+using DSharpPlus.VoiceLink.AudioDecoders;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Payloads;
@@ -42,6 +43,7 @@ namespace DSharpPlus.VoiceLink
         private CancellationTokenSource _cancellationTokenSource { get; init; } = new();
         private Dictionary<uint, VoiceLinkUser> _speakers { get; init; } = [];
         private IVoiceEncrypter _voiceEncrypter { get; init; }
+        private AudioDecoderFactory _audioDecoderFactory { get; init; }
         private byte[] _secretKey { get; set; } = [];
         private Pipe _audioPipe { get; init; } = new();
 
@@ -62,6 +64,7 @@ namespace DSharpPlus.VoiceLink
             Channel = channel;
             _logger = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
             _voiceEncrypter = extension.Configuration.VoiceEncrypter;
+            _audioDecoderFactory = extension.Configuration.AudioDecoderFactory;
         }
 
         public async ValueTask DisconnectAsync()
@@ -373,7 +376,7 @@ namespace DSharpPlus.VoiceLink
                 // We're explicitly passing a null member, however the dev should never expect this to
                 // be null as the speaking event should always fire once we receive both the user and the ssrc.
                 // TL;DR, this is to ensure we never lose any audio data.
-                voiceLinkUser = new(this, rtpHeader.Ssrc, null!);
+                voiceLinkUser = new(this, rtpHeader.Ssrc, null!, _audioDecoderFactory(Extension.Configuration.ServiceProvider), rtpHeader.Sequence);
                 _speakers.Add(rtpHeader.Ssrc, voiceLinkUser);
             }
 
@@ -402,27 +405,23 @@ namespace DSharpPlus.VoiceLink
                 decryptedAudio = decryptedAudio[(4 + (4 * extensionLength))..];
             }
 
+            // TODO: Handle FEC (Forward Error Correction) aka packet loss.
+            // * https://tools.ietf.org/html/rfc5109
+            bool hasPacketLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
+
             // Decode the audio
             try
             {
-                // Calculate the frame size and buffer size
-                const int sampleRate = 48000; // 48 kHz
-                const double frameDuration = 0.020; // 20 milliseconds
-                const int frameSize = (int)(sampleRate * frameDuration); // 960 samples
-                const int bufferSize = frameSize * 2 * sizeof(short); // Stereo audio + opus PCM units are 16 bits
-
-                // TODO: Handle FEC (Forward Error Correction) aka packet loss.
-                // * https://tools.ietf.org/html/rfc5109
-                bool hasPacketLoss = voiceLinkUser.UpdateSequence(rtpHeader.Sequence);
+                int maxBufferSize = voiceLinkUser.AudioDecoder.GetMaxBufferSize();
 
                 // Allocate the buffer for the PCM data
-                Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(bufferSize);
+                Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(maxBufferSize);
 
                 // Decode the Opus packet
-                voiceLinkUser._opusDecoder.Decode(decryptedAudio, audioBuffer, frameSize, hasPacketLoss);
+                int writtenBytes = voiceLinkUser.AudioDecoder.Decode(hasPacketLoss, decryptedAudio, audioBuffer);
 
                 // Write the audio to the pipe
-                voiceLinkUser._audioPipe.Writer.Advance(bufferSize);
+                voiceLinkUser._audioPipe.Writer.Advance(writtenBytes);
             }
             catch (Exception error)
             {
