@@ -62,7 +62,7 @@ namespace DSharpPlus.VoiceLink
 
             // Insert our SSRC code
             connection._logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", connection.Guild.Id, voiceReadyPayload.Ssrc);
-            connection._speakers.Add(voiceReadyPayload.Ssrc, new(connection, voiceReadyPayload.Ssrc, connection.Member));
+            connection._speakers.Add(voiceReadyPayload.Ssrc, new(connection, voiceReadyPayload.Ssrc, connection.Member, connection._audioDecoderFactory(connection.Extension.Configuration.ServiceProvider)));
 
             // Setup UDP while also doing ip discovery
             connection._logger.LogDebug("Connection {GuildId}: Setting up UDP, sending ip discovery...", connection.Guild.Id);
@@ -174,7 +174,7 @@ namespace DSharpPlus.VoiceLink
             // When we receive the speaking payload, we update the user's member object.
             if (!connection._speakers.TryGetValue(voiceSpeakingPayload.Ssrc, out VoiceLinkUser? voiceLinkUser))
             {
-                voiceLinkUser = new(connection, voiceSpeakingPayload.Ssrc, await connection.Guild.GetMemberAsync(voiceSpeakingPayload.UserId));
+                voiceLinkUser = new(connection, voiceSpeakingPayload.Ssrc, await connection.Guild.GetMemberAsync(voiceSpeakingPayload.UserId), connection._audioDecoderFactory(connection.Extension.Configuration.ServiceProvider));
                 connection._speakers.TryAdd(voiceSpeakingPayload.Ssrc, voiceLinkUser);
             }
             else

@@ -2,8 +2,8 @@ using System;
 using System.IO;
 using System.IO.Pipelines;
 using DSharpPlus.Entities;
+using DSharpPlus.VoiceLink.AudioDecoders;
 using DSharpPlus.VoiceLink.Enums;
-using DSharpPlus.VoiceLink.Opus;
 
 namespace DSharpPlus.VoiceLink
 {
@@ -13,18 +13,19 @@ namespace DSharpPlus.VoiceLink
         public uint Ssrc { get; init; }
         public DiscordMember Member { get; internal set; }
         public VoiceSpeakingIndicators VoiceIndication { get; internal set; } = VoiceSpeakingIndicators.None;
+        public IAudioDecoder AudioDecoder { get; init; }
         public PipeReader AudioPipe => _audioPipe.Reader;
         public Stream AudioStream => _audioPipe.Reader.AsStream(true);
 
         internal Pipe _audioPipe { get; init; } = new();
-        internal OpusDecoder _opusDecoder { get; init; } = OpusDecoder.Create(OpusSampleRate.Opus48000Hz, 2);
         internal ushort _lastSequence;
 
-        public VoiceLinkUser(VoiceLinkConnection connection, uint ssrc, DiscordMember member, ushort sequence = 0)
+        public VoiceLinkUser(VoiceLinkConnection connection, uint ssrc, DiscordMember member, IAudioDecoder audioDecoder, ushort sequence = 0)
         {
             Connection = connection ?? throw new ArgumentNullException(nameof(connection));
             Ssrc = ssrc;
             Member = member;
+            AudioDecoder = audioDecoder ?? throw new ArgumentNullException(nameof(audioDecoder));
             _lastSequence = sequence;
         }
 
