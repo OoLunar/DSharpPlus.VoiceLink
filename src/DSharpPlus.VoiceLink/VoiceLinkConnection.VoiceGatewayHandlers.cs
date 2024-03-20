@@ -187,7 +187,7 @@ namespace DSharpPlus.VoiceLink
             {
                 Connection = connection,
                 Payload = voiceSpeakingPayload,
-                VoiceUser = connection._speakers[voiceSpeakingPayload.Ssrc]
+                VoiceUser = voiceLinkUser
             });
         }
     }
