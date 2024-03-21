@@ -69,7 +69,6 @@ jobs:
           mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
-        if: ${{ env.OPUS_VERSION }}
         with:
           add: "libs/libopus/"
           default_author: github_actions
