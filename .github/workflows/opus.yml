@@ -42,8 +42,8 @@ jobs:
               os: windows-latest,
               install-deps: "",
               args: "-G \"Visual Studio 17 2022\" -A x64",
-              find-file: "opus.dll",
-              file: "Release/opus.dll"
+              find-file: "Release/opus.dll",
+              file: "opus.dll"
             }
     steps:
       - name: Checkout
