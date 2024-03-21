@@ -32,7 +32,7 @@ jobs:
           - {
               name: "MacOS x64",
               os: macos-latest,
-              install-deps: "brew install autoconf automake libtool git gcc cmake make",
+              install-deps: "brew install autoconf automake libtool git gcc cmake make && export PATH=\"/usr/local/opt/make/libexec/gnubin:$PATH\"",
               args: "",
               find-file: "libopus.*.*.*.dylib",
               file: "libopus.dylib"
@@ -47,8 +47,14 @@ jobs:
             }
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
+          submodules: recursive
+      - name: Checkout Opus
+        uses: actions/checkout@v4
+        with:
+          repository: https://gitlab.xiph.org/xiph/opus.git
+          path: libs/opus
           submodules: recursive
       - name: Set up MSBuild
         if: matrix.config.os == 'windows-latest'
@@ -57,18 +63,15 @@ jobs:
           msbuild-architecture: x64
       - name: Install dependencies
         run: ${{ matrix.config.install-deps }}
-      - name: Checkout Opus
+      - name: Build on ${{ matrix.config.name }}
         run: |
-          git clone https://gitlab.xiph.org/xiph/opus libs/opus
           cd libs/opus
           echo "OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
           git checkout "$OPUS_VERSION"
-      - name: Build on ${{ matrix.config.name }}
-        run: |
-          cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build build --config Release
           rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.find-file }}"
-          mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
+          mv "build/${{ matrix.config.find-file }}" "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
         with:
