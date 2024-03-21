@@ -59,7 +59,7 @@ jobs:
         run: ${{ matrix.config.install-deps }}
       - name: Build on ${{ matrix.config.name }}
         run: |
-          git clone https://gitlab.xiph.org/xiph/opus.git libs/opus
+          git clone -vv https://gitlab.xiph.org/xiph/opus libs/opus
           cd libs/opus
           echo "OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
           git checkout "$OPUS_VERSION"
