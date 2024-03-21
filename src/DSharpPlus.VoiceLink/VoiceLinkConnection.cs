@@ -35,8 +35,7 @@ namespace DSharpPlus.VoiceLink
         public DiscordUser User => Client.CurrentUser;
         public DiscordMember Member => Guild.CurrentMember;
         public IReadOnlyDictionary<uint, VoiceLinkUser> Speakers => _speakers;
-        public TimeSpan WebsocketPing { get; private set; }
-        public TimeSpan UdpPing { get; private set; }
+        public TimeSpan HeartbeatPing { get; private set; }
 
         // Audio processing
         private ILogger<VoiceLinkConnection> _logger { get; init; }
@@ -127,7 +126,7 @@ namespace DSharpPlus.VoiceLink
 
             _speakers.Clear();
             _heartbeatQueue.Clear();
-            WebsocketPing = TimeSpan.Zero;
+            HeartbeatPing = TimeSpan.Zero;
 
             Extension._connections.TryRemove(Guild.Id, out _);
             VoiceLinkPendingConnection pendingConnection = new();

@@ -117,7 +117,7 @@ namespace DSharpPlus.VoiceLink
             long heartbeat = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<long>>(readResult).Data;
             if (connection._heartbeatQueue.TryDequeue(out long unixTimestamp))
             {
-                connection.WebsocketPing = TimeSpan.FromMilliseconds(heartbeat - unixTimestamp);
+                connection.HeartbeatPing = TimeSpan.FromMilliseconds(heartbeat - unixTimestamp);
                 return;
             }
 
