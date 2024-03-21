@@ -53,7 +53,8 @@ jobs:
       - name: Checkout Opus
         uses: actions/checkout@v4
         with:
-          repository: https://gitlab.xiph.org/xiph/opus.git
+          github-server-url: https://gitlab.xiph.org
+          repository: xiph/opus
           path: libs/opus
           submodules: recursive
       - name: Set up MSBuild
