@@ -14,111 +14,66 @@ permissions:
   contents: write
 
 jobs:
-  build-linux:
-    name: Build Opus for Linux x64
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Checkout Opus
-        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
-      - name: Get Opus latest version
-        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
-      - name: Build on Linux
-        run: |
-          cd libs/opus
-          git checkout ${{ env.OPUS_VERSION }}
-          sudo apt-get update
-          sudo apt-get -y install autoconf automake libtool gcc make git
-          ./autogen.sh
-          ./configure CFLAGS='-O2' CXXFLAGS='-O2'
-          make -j`nproc`
-          REAL_FILE=$(readlink -f .libs/libopus.so)
-          mkdir -p "${{ github.workspace }}/libs/libopus/"
-          mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus.so"
-      - name: "Commit Opus"
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: "libs/libopus/"
-          default_author: github_actions
-          message: Update libopus.so to ${{ env.OPUS_VERSION }}
-          pull: '--rebase --autostash'
-          push: true
-
-  build-macos:
-    name: Build Opus for MacOS x64
-    runs-on: macos-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-        with:
-          submodules: recursive
-      - name: Checkout Opus
-        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
-      - name: Get Opus latest version
-        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
-      - name: Build for MacOS x64
-        run: |
-          cd libs/opus
-          git checkout ${{ env.OPUS_VERSION }}
-          brew install autoconf automake libtool git
-          ./autogen.sh
-          ./configure CFLAGS='-O2' CXXFLAGS='-O2'
-          make -j`nproc`
-          REAL_FILE=$(readlink -f .libs/libopus.dylib)
-          mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus.dylib"
-      # I'm unable to build Sodium for MacOS Arm, so I'm disabling this for now
-      #- name: Build for MacOS Arm
-      #  run: |
-      #    cd libs/opus
-      #    git clean -fdx
-      #    ./autogen.sh
-      #    ./configure --host=arm-apple-darwin20 --target=arm-apple-darwin20 CFLAGS='-O2' CXXFLAGS='-O2'
-      #    make -j`nproc`
-      #    REAL_FILE=$(readlink -f .libs/libopus.dylib)
-      #    mv "$REAL_FILE" "${{ github.workspace }}/libs/libopus/libopus-arm64.dylib"
-      - name: "Commit Opus"
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: "libs/libopus/"
-          default_author: github_actions
-          message: Update libopus.dylib to ${{ env.OPUS_VERSION }}
-          pull: '--rebase --autostash'
-          push: true
-
-  build-windows:
-    name: Build Opus for Windows x64
-    runs-on: windows-latest
+  build:
+    name: Build Opus for ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Linux x64",
+              os: ubuntu-latest,
+              install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool git gcc cmake make",
+              args: "",
+              find-file: "libopus.so.*.*.*",
+              file: "libopus.so"
+            }
+          - {
+              name: "MacOS x64",
+              os: macos-latest,
+              install-deps: "brew install autoconf automake libtool git gcc cmake make",
+              args: "",
+              find-file: "libopus.*.*.*.dylib",
+              file: "libopus.dylib"
+            }
+          - {
+              name: "Windows x64",
+              os: windows-latest,
+              install-deps: "choco install git cmake make",
+              args: "-G \"Visual Studio 17 2022\" -A x64",
+              find-file: "opus.dll",
+              file: "opus.dll"
+            }
     steps:
       - name: Checkout
         uses: actions/checkout@v3
         with:
           submodules: recursive
       - name: Set up MSBuild
-        uses: microsoft/setup-msbuild@v1.3.1
+        if: matrix.config.os == 'windows-latest'
+        uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: x64
+      - name: Install dependencies
+        run: ${{ matrix.config.install-deps }}
       - name: Checkout Opus
-        run: git clone https://gitlab.xiph.org/xiph/opus libs/opus
-      - name: Get Opus latest version
-        run: "cd libs/opus && echo \"OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
-      - name: Build on Windows
         run: |
+          git clone https://gitlab.xiph.org/xiph/opus libs/opus
           cd libs/opus
-          git checkout ${{ env.OPUS_VERSION }}
-          mkdir build
-          cd build
-          cmake .. -G "Visual Studio 17 2022" -A Win32 -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
-          cmake build .
-          rm "${{ github.workspace }}/libs/libopus/opus.dll"
-          mv build/opus.dll "${{ github.workspace }}/libs/libopus/opus.dll"
-      - name: "Commit Opus"
+          echo "OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
+          git checkout "$OPUS_VERSION"
+      - name: Build on ${{ matrix.config.name }}
+        run: |
+          cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release
+          cmake --build build --config Release
+          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.find-file }}"
+          mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
+      - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
         with:
           add: "libs/libopus/"
           default_author: github_actions
-          message: Update opus.dll to ${{ env.OPUS_VERSION }}
+          message: Update ${{ matrix.config.file }} to ${{ env.OPUS_VERSION }}
           pull: '--rebase --autostash'
           push: true
