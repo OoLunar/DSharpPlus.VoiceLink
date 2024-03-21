@@ -22,28 +22,70 @@ jobs:
       matrix:
         config:
           - {
-              name: "Linux x64",
+            name: "Android ARM64",
+            os: ubuntu-latest,
+            install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool gcc cmake make",
+            args: "-DCMAKE_TOOLCHAIN_FILE=${ANDROID_HOME}/ndk/25.2.9519653/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a",
+            find-file: "libopus.so.*.*.*",
+            file: "libopus.so",
+            rid: "android-arm64",
+          }
+          - {
+              name: "Linux",
               os: ubuntu-latest,
               install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool gcc cmake make",
               args: "",
               find-file: "libopus.so.*.*.*",
-              file: "libopus.so"
+              file: "libopus.so",
+              rid: "linux-x64"
             }
           - {
-              name: "MacOS x64",
+              name: "MacOS",
               os: macos-latest,
               install-deps: "brew install autoconf automake libtool gcc cmake make && export PATH=\"/usr/local/opt/make/libexec/gnubin:$PATH\"",
               args: "",
               find-file: "libopus.*.*.*.dylib",
-              file: "libopus.dylib"
+              file: "libopus.dylib",
+              rid: "osx-x64"
+            }
+          - {
+              name: "iOS",
+              os: macos-latest,
+              install-deps: "brew install autoconf automake libtool gcc cmake make && export PATH=\"/usr/local/opt/make/libexec/gnubin:$PATH\"",
+              args: "-G \"Unix Makefiles\" -DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64",
+              find-file: "libopus.*.*.*.dylib",
+              file: "libopus.dylib",
+              rid: "ios-arm64"
+            }
+          - {
+              name: "Windows x86",
+              os: windows-latest,
+              install-deps: "",
+              args: "-G \"Visual Studio 17 2022\" -A Win32",
+              find-file: "Release/opus.dll",
+              file: "opus.dll",
+              rid: "win-x86",
+              arch: "x86"
             }
           - {
               name: "Windows x64",
               os: windows-latest,
               install-deps: "",
-              args: "-G \"Visual Studio 17 2022\" -A x64",
+              args: "-G \"Visual Studio 17 2022\" -A Win64",
               find-file: "Release/opus.dll",
-              file: "opus.dll"
+              file: "opus.dll",
+              rid: "win-x64",
+              arch: "x64"
+            }
+          - {
+              name: "Windows ARM64",
+              os: windows-latest,
+              install-deps: "",
+              args: "-G \"Visual Studio 17 2022\" -A ARM64",
+              find-file: "Release/opus.dll",
+              file: "opus.dll",
+              rid: "win-arm64",
+              arch: "arm64"
             }
     steps:
       - name: Checkout
@@ -51,13 +93,23 @@ jobs:
         with:
           submodules: recursive
       - name: Set up MSBuild
-        if: matrix.config.os == 'windows-latest'
+        if: contains('win', matrix.config.os)
         uses: microsoft/setup-msbuild@v2
         with:
-          msbuild-architecture: x64
+          msbuild-architecture: ${{ matrix.config.arch }}
+      - name: Set up JDK 17
+        if: contains('android', matrix.config.rid)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Android SDK
+        if: contains('android', matrix.config.rid)
+        uses: android-actions/setup-android@v3
       - name: Install dependencies
         run: ${{ matrix.config.install-deps }}
       - name: Build on ${{ matrix.config.name }}
+        shell: bash
         run: |
           git clone https://gitlab.xiph.org/xiph/opus libs/opus
           cd libs/opus
@@ -65,8 +117,9 @@ jobs:
           git checkout $OPUS_VERSION
           cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build build --config Release
-          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
-          mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
+          mkdir -p "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native"
+          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
+          mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
         with:

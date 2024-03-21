@@ -8,6 +8,6 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="$(ProjectRoot)/libs/libopus/*" CopyToOutputDirectory="Always" PackagePath="lib/$(TargetFramework)" />
+    <Content Include="$(ProjectRoot)/libs/libopus/*" CopyToOutputDirectory="Always" PackagePath="runtimes/" />
   </ItemGroup>
 </Project>
