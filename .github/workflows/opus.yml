@@ -65,7 +65,7 @@ jobs:
           git checkout $OPUS_VERSION
           cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build build --config Release
-          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.find-file }}"
+          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
           mv "build/${{ matrix.config.find-file }}" "${{ github.workspace }}/libs/libopus/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
