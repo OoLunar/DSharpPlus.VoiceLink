@@ -43,7 +43,7 @@ jobs:
               install-deps: "choco install git cmake make",
               args: "-G \"Visual Studio 17 2022\" -A x64",
               find-file: "opus.dll",
-              file: "opus.dll"
+              file: "Release/opus.dll"
             }
     steps:
       - name: Checkout
