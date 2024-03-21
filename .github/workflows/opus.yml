@@ -40,7 +40,7 @@ jobs:
           - {
               name: "Windows x64",
               os: windows-latest,
-              install-deps: "choco install cmake make",
+              install-deps: "",
               args: "-G \"Visual Studio 17 2022\" -A x64",
               find-file: "opus.dll",
               file: "Release/opus.dll"
