@@ -93,7 +93,7 @@ jobs:
         with:
           submodules: recursive
       - name: Set up MSBuild
-        if: contains('win', matrix.config.os)
+        if: contains('win', matrix.config.rid)
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: ${{ matrix.config.arch }}
@@ -118,7 +118,7 @@ jobs:
           cmake -S . -B build ${{ matrix.config.args }} -DBUILD_SHARED_LIBS=ON -DCMAKE_BUILD_TYPE=Release -Wno-dev
           cmake --build build --config Release
           mkdir -p "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native"
-          rm "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
+          rm -f "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
           mv build/${{ matrix.config.find-file }} "${{ github.workspace }}/libs/libopus/${{ matrix.config.os }}-${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
