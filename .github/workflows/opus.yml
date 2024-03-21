@@ -50,13 +50,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Checkout Opus
-        uses: actions/checkout@v4
-        with:
-          github-server-url: https://gitlab.xiph.org
-          repository: xiph/opus
-          path: libs/opus
-          submodules: recursive
       - name: Set up MSBuild
         if: matrix.config.os == 'windows-latest'
         uses: microsoft/setup-msbuild@v2
@@ -66,6 +59,7 @@ jobs:
         run: ${{ matrix.config.install-deps }}
       - name: Build on ${{ matrix.config.name }}
         run: |
+          git clone https://gitlab.xiph.org/xiph/opus.git libs/opus
           cd libs/opus
           echo "OPUS_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
           git checkout "$OPUS_VERSION"
