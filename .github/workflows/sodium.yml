@@ -80,7 +80,7 @@ jobs:
           - {
               name: "Windows x86",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && C:/Program\ Files/Microsoft\ Visual\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=Win32 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program\\ Files/Microsoft\\ Visual\\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=Win32 /m && cd ../../../",
               output-file: "bin/Win32/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x86",
@@ -89,7 +89,7 @@ jobs:
           - {
               name: "Windows x64",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && C:/Program\ Files/Microsoft\ Visual\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program\\ Files/Microsoft\\ Visual\\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m && cd ../../../",
               output-file: "bin/x64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x64",
@@ -98,7 +98,7 @@ jobs:
           - {
               name: "Windows Arm64",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && C:/Program\ Files/Microsoft\ Visual\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=arm64 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program\\ Files/Microsoft\\ Visual\\ Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=arm64 /m && cd ../../../",
               output-file: "bin/arm64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-arm64",
