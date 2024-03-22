@@ -1,136 +1,131 @@
 name: Update Sodium
 on:
-    release:
-        types:
-            - published
-    workflow_dispatch:
-    push:
-        branches:
-            - master
-        paths:
-            - '.github/workflows/sodium.yml'
+  release:
+    types:
+      - published
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/sodium.yml'
 
 permissions:
-    contents: write
+  contents: write
 
 jobs:
-    build-linux:
-        name: Build Sodium for Linux x64
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v3
-              with:
-                submodules: recursive
-            - name: Checkout Sodium
-              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
-            - name: Get Sodium latest version
-              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
-            - name: Build on Linux
-              run: |
-                cd libs/sodium
-                git checkout ${{ env.SODIUM_VERSION }}
-                sudo apt-get update
-                sudo apt-get install -y build-essential libtool autoconf automake
-                ./autogen.sh -s
-                ./configure --disable-dependency-tracking --enable-minimal
-                make -j`nproc`
-                make check
-                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.so)
-                mkdir -p "${{ github.workspace }}/libs/libsodium/"
-                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium.so"
-            - name: "Commit Sodium"
-              uses: EndBug/add-and-commit@v9
-              with:
-                add: "libs/libsodium/"
-                default_author: github_actions
-                message: Update libsodium.so to ${{ env.SODIUM_VERSION }}
-                pull: '--rebase --autostash'
-                push: true
-
-    build-mac:
-        name: Build Sodium for MacOS x64
-        runs-on: macos-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v3
-              with:
-                submodules: recursive
-            - name: Checkout Sodium
-              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
-            - name: Get Sodium latest version
-              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" >> $GITHUB_ENV"
-            - name: Build for MacOS x64
-              run: |
-                cd libs/sodium
-                git checkout ${{ env.SODIUM_VERSION }}
-                brew install libtool autoconf automake
-                ./autogen.sh -s
-                ./configure --disable-dependency-tracking --enable-minimal
-                make -j`nproc`
-                make check
-                ls -lsah src/libsodium/.libs/
-                REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
-                mkdir -p "${{ github.workspace }}/libs/libsodium/"
-                mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium.dylib"
-              #
-              # Release 1.0.18 fails the following test:
-              # ../../build-aux/test-driver: line 112: 28267 Abort trap: 6           "$@" >> "$log_file" 2>&1
-              # FAIL: sodium_version
-              # As such I'm disabling Mac M1 support for now.
-              #
-              #- name: Build for MacOS Arm
-              #run: |
-              #  cd libs/sodium
-              #  git clean -fdx
-              #  export LDFLAGS='--specs=nosys.specs'
-              #  ./autogen.sh -s
-              #  ./configure --disable-dependency-tracking --enable-minimal --host=arm-none-eabi
-              #  make -j`nproc`
-              #  make check
-              #  ls -lsah src/libsodium/.libs/
-              #  REAL_FILE=$(readlink -f src/libsodium/.libs/libsodium.dylib)
-              #  mkdir -p "${{ github.workspace }}/libs/libsodium/"
-              #  mv "$REAL_FILE" "${{ github.workspace }}/libs/libsodium/libsodium-arm64.dylib"
-            - name: "Commit Sodium"
-              uses: EndBug/add-and-commit@v9
-              with:
-                add: "libs/libsodium/"
-                default_author: github_actions
-                message: Update libsodium.dylib to ${{ env.SODIUM_VERSION }}
-                pull: '--rebase --autostash'
-                push: true
-
-    build-windows:
-        name: Build Sodium for Windows x64
-        runs-on: windows-latest
-        steps:
-            - name: Checkout
-              uses: actions/checkout@v3
-              with:
-                submodules: recursive
-            - name: Checkout Sodium
-              run: git clone https://github.com/jedisct1/libsodium.git libs/sodium
-            - name: Get Sodium latest version
-              run: "cd libs/sodium && echo \"SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))\" | Out-File -Append $env:GITHUB_ENV"
-            - name: Set up MSBuild
-              uses: microsoft/setup-msbuild@v1.3.1
-              with:
-                msbuild-architecture: x64
-            - name: Build for Windows x64
-              run: |
-                cd libs/sodium
-                git checkout ${{ env.SODIUM_VERSION }}
-                cd builds/msvc/vs2019
-                msbuild libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m
-                cd ../../../
-                rm "${{ github.workspace }}/libs/libsodium/sodium.dll"
-                mv "bin/x64/Release/v142/dynamic/libsodium.dll" "${{ github.workspace }}/libs/libsodium/sodium.dll"
-            - name: "Commit Sodium"
-              uses: EndBug/add-and-commit@v9
-              with:
-                add: "libs/libsodium/"
-                default_author: github_actions
-                message: Update sodium.dll to ${{ env.SODIUM_VERSION }}
-                pull: '--rebase --autostash'
-                push: true
+  build:
+    name: Build Sodium for ${{ matrix.config.name }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+              name: "Android Arm64",
+              os: ubuntu-latest,
+              target: "aarch64-linux-android",
+              output-file: "libsodium.so",
+              file: "libsodium.so",
+              rid: "android-arm64",
+          }
+          - {
+              name: "Linux x64 (glibc)",
+              os: ubuntu-latest,
+              target: "x86_64-linux-gnu",
+              output-file: "libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-x64",
+            }
+          - {
+              name: "Linux x64 (musl)",
+              os: ubuntu-latest,
+              target: "x86_64-linux-musl",
+              output-file: "libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-x64-musl",
+            }
+          - {
+              name: "Linux Arm64 (glibc)",
+              os: ubuntu-latest,
+              target: "aarch64-linux-gnu",
+              output-file: "libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-arm64",
+            }
+          - {
+              name: "Linux Arm64 (musl)",
+              os: ubuntu-latest,
+              target: "aarch64-linux-musl",
+              output-file: "libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-arm64-musl",
+            }
+          - {
+              name: "MacOS x64",
+              os: ubuntu-latest,
+              target: "x86_64-macos",
+              output-file: "libsodium.dylib",
+              file: "libsodium.dylib",
+              rid: "osx-x64",
+            }
+          - {
+              name: "iOS",
+              os: ubuntu-latest,
+              target: "aarch64-ios",
+              output-file: "libsodium.dylib",
+              file: "libsodium.dylib",
+              rid: "ios-arm64",
+            }
+          - {
+              name: "Windows x86",
+              os: windows-latest,
+              target: "x86-windows-gnu",
+              output-file: "libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-x86",
+            }
+          - {
+              name: "Windows x64",
+              os: windows-latest,
+              target: "x86_64-windows-gnu",
+              output-file: "libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-x64",
+            }
+          - {
+              name: "Windows Arm64",
+              os: windows-latest,
+              target: "aarch64-windows-gnu",
+              output-file: "libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-arm64",
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: 0.11.0
+      - name: Build on ${{ matrix.config.name }}
+        shell: bash
+        run: |
+          git clone https://github.com/jedisct1/libsodium.git libs/sodium
+          cd libs/sodium
+          echo "SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
+          git checkout $SODIUM_VERSION
+          zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=${{ matrix.config.target }}
+          mkdir -p "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native"
+          rm -f "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
+          mv zig-out/lib/${{ matrix.config.output-file }} "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
+      - name: "Update ${{ matrix.config.file }}"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libsodium/"
+          default_author: github_actions
+          message: Update ${{ matrix.config.file }} to ${{ env.SODIUM_VERSION }}
+          pull: '--rebase --autostash'
+          push: true
