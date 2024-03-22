@@ -109,13 +109,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-      - name: Checkout Sodium
-        uses: actions/checkout@v4
-        with:
-          repository: jedisct1/libsodium
-          path: libs/sodium
-          fetch-tags: true
-          ref: fb4533b0a941b3a5b1db5687d1b008a5853d1f29
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
         if: contains(matrix.config.command, 'zig')
@@ -127,19 +120,16 @@ jobs:
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: ${{ matrix.config.arch }}
-      - name: Set up JDK 17
-        if: contains(matrix.config.rid, 'android')
-        uses: actions/setup-java@v4
-        with:
-          java-version: '17'
-          distribution: 'temurin'
       - name: Setup Android SDK
         if: contains(matrix.config.rid, 'android')
         uses: android-actions/setup-android@v3
       - name: Build on ${{ matrix.config.name }}
         shell: bash
         run: |
+          git clone https://github.com/jedisct1/libsodium.git libs/sodium
           cd libs/sodium
+          echo "SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
+          git checkout $SODIUM_VERSION
           ${{ matrix.config.command }}
           mkdir -p "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native"
           rm -f "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
