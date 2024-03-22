@@ -72,7 +72,7 @@ jobs:
           - {
               name: "iOS",
               os: macos-latest,
-              target: "aarch64-ios --libc ../../libc.txt",
+              target: "aarch64-ios",
               output-file: "libsodium.dylib",
               file: "libsodium.dylib",
               rid: "ios-arm64",
@@ -144,6 +144,7 @@ jobs:
           brew install gnu-sed
           gsed -i "s|include_dir=|include_dir=$SDK_IPHONE_PATH|" libc.txt
           gsed -i "s|sys_include_dir=|sys_include_dir=$SDK_IPHONE_PATH|" libc.txt
+          echo "ZIG_LIBC=$(pwd)/libc.txt" >> $GITHUB_ENV
           cat libc.txt
       - name: Build on ${{ matrix.config.name }}
         shell: bash
