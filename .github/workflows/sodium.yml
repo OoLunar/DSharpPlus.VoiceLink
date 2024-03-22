@@ -120,6 +120,12 @@ jobs:
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: ${{ matrix.config.arch }}
+      - name: Set up JDK 17
+        if: contains(matrix.config.rid, 'android')
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
       - name: Setup Android SDK
         if: contains(matrix.config.rid, 'android')
         uses: android-actions/setup-android@v3
@@ -128,6 +134,7 @@ jobs:
         run: |
           git clone https://github.com/jedisct1/libsodium.git libs/sodium
           cd libs/sodium
+          git fetch --tags origin
           echo "SODIUM_VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))" >> $GITHUB_ENV
           git checkout $SODIUM_VERSION
           ${{ matrix.config.command }}
