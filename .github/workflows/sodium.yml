@@ -137,12 +137,13 @@ jobs:
         uses: android-actions/setup-android@v3
       - name: Workaround for iOS
         if: contains(matrix.config.rid, 'ios')
+        shell: bash
         run: |
           SDK_IPHONE_PATH="$(xcrun --show-sdk-path --sdk iphoneos)"
-          SDK_IPHONE_PATH="$(sed 's/ /\\ /g' <<< $SDK_IPHONE_PATH)"
+          SDK_IPHONE_PATH="$(sed 's/ /\\ /g' <<< "$SDK_IPHONE_PATH")"
           zig libc > libc.txt
-          sed -i "s/include_dir=/include_dir=$(SDK_IPHONE_PATH)/" libc.txt
-          sed -i "s/sys_include_dir=/sys_include_dir=$(SDK_IPHONE_PATH)/" libc.txt
+          sed -i "s/include_dir=/include_dir=$SDK_IPHONE_PATH/" libc.txt
+          sed -i "s/sys_include_dir=/sys_include_dir=$SDK_IPHONE_PATH/" libc.txt
           cat libc.txt
       - name: Build on ${{ matrix.config.name }}
         shell: bash
