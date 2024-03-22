@@ -80,7 +80,7 @@ jobs:
           - {
               name: "Windows x86",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && msbuild libsodium.sln /p:Configuration=DynRelease /p:Platform=Win32 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=Win32 /m && cd ../../../",
               output-file: "bin/Win32/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x86",
@@ -89,7 +89,7 @@ jobs:
           - {
               name: "Windows x64",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && msbuild libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=x64 /m && cd ../../../",
               output-file: "bin/x64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x64",
@@ -98,7 +98,7 @@ jobs:
           - {
               name: "Windows Arm64",
               os: windows-latest,
-              command: "cd builds/msvc/vs2019 && msbuild libsodium.sln /p:Configuration=DynRelease /p:Platform=arm64 /m && cd ../../../",
+              command: "cd builds/msvc/vs2019 && C:/Program Files/Microsoft Visual Studio/2022/Enterprise/MSBuild/Current/Bin/msbuild.exe libsodium.sln /p:Configuration=DynRelease /p:Platform=arm64 /m && cd ../../../",
               output-file: "bin/arm64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-arm64",
@@ -118,6 +118,7 @@ jobs:
           ref: fb4533b0a941b3a5b1db5687d1b008a5853d1f29
       - name: Setup Zig
         uses: goto-bus-stop/setup-zig@v2
+        if: contains(matrix.config.command, 'zig')
         with:
           version: 0.11.0
           cache: false
