@@ -84,6 +84,7 @@ jobs:
               output-file: "libsodium.dll",
               file: "sodium.dll",
               rid: "win-x86",
+              arch: "x86"
             }
           - {
               name: "Windows x64",
@@ -92,6 +93,7 @@ jobs:
               output-file: "libsodium.dll",
               file: "sodium.dll",
               rid: "win-x64",
+              arch: "x64"
             }
           - {
               name: "Windows Arm64",
@@ -100,6 +102,7 @@ jobs:
               output-file: "libsodium.dll",
               file: "sodium.dll",
               rid: "win-arm64",
+              arch: "arm64"
             }
     steps:
       - name: Checkout
