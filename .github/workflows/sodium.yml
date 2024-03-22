@@ -24,7 +24,7 @@ jobs:
           - {
               name: "Android Arm64",
               os: ubuntu-latest,
-              command: "./dist-build/android-armv8-a.sh",
+              command: "./dist-build/android-armv8-a.sh && ls -lsah libsodium-android-armv8-a+crypto",
               output-file: "libsodium-android-armv8-a+crypto/usr/lib/libsodium.so",
               file: "libsodium.so",
               rid: "android-arm64",
@@ -64,7 +64,7 @@ jobs:
           - {
               name: "MacOS x64",
               os: macos-latest,
-              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-darwin",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-macos",
               output-file: "zig-out/lib/libsodium.dylib",
               file: "libsodium.dylib",
               rid: "osx-x64",
