@@ -122,21 +122,21 @@ jobs:
           version: 0.11.0
           cache: false
       - name: Set up MSBuild
-        if: contains('win', matrix.config.rid)
+        if: contains(matrix.config.rid, 'win')
         uses: microsoft/setup-msbuild@v2
         with:
           msbuild-architecture: ${{ matrix.config.arch }}
       - name: Set up JDK 17
-        if: contains('android', matrix.config.rid)
+        if: contains(matrix.config.rid, 'android')
         uses: actions/setup-java@v4
         with:
           java-version: '17'
           distribution: 'temurin'
       - name: Setup Android SDK
-        if: contains('android', matrix.config.rid)
+        if: contains(matrix.config.rid, 'android')
         uses: android-actions/setup-android@v3
       - name: Workaround for iOS
-        if: contains('ios', matrix.config.rid)
+        if: contains(matrix.config.rid, 'ios')
         run: |
           SDK_IPHONE_PATH=$(xcrun --show-sdk-path --sdk iphoneos)
           zig libc > libc.txt
