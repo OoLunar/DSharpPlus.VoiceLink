@@ -72,7 +72,7 @@ jobs:
           - {
               name: "iOS",
               os: macos-latest,
-              target: "aarch64-ios --libc=libc.txt",
+              target: "aarch64-ios --libc libc.txt",
               output-file: "libsodium.dylib",
               file: "libsodium.dylib",
               rid: "ios-arm64",
