@@ -24,64 +24,64 @@ jobs:
           - {
               name: "Android Arm64",
               os: ubuntu-latest,
-              target: "aarch64-linux-android",
-              output-file: "libsodium.so",
+              command: "./dist-build/android-armv8-a.sh",
+              output-file: "libsodium-android-armv8-a+crypto/usr/lib/libsodium.so",
               file: "libsodium.so",
               rid: "android-arm64",
           }
           - {
               name: "Linux x64 (glibc)",
               os: ubuntu-latest,
-              target: "x86_64-linux-gnu",
-              output-file: "libsodium.so",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu",
+              output-file: "zig-out/lib/libsodium.so",
               file: "libsodium.so",
               rid: "linux-x64",
             }
           - {
               name: "Linux x64 (musl)",
               os: ubuntu-latest,
-              target: "x86_64-linux-musl",
-              output-file: "libsodium.so",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-musl",
+              output-file: "zig-out/lib/libsodium.so",
               file: "libsodium.so",
               rid: "linux-x64-musl",
             }
           - {
               name: "Linux Arm64 (glibc)",
               os: ubuntu-latest,
-              target: "aarch64-linux-gnu",
-              output-file: "libsodium.so",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-gnu",
+              output-file: "zig-out/lib/libsodium.so",
               file: "libsodium.so",
               rid: "linux-arm64",
             }
           - {
               name: "Linux Arm64 (musl)",
               os: ubuntu-latest,
-              target: "aarch64-linux-musl",
-              output-file: "libsodium.so",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-musl",
+              output-file: "zig-out/lib/libsodium.so",
               file: "libsodium.so",
               rid: "linux-arm64-musl",
             }
           - {
               name: "MacOS x64",
               os: macos-latest,
-              target: "x86_64-macos",
-              output-file: "libsodium.dylib",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-darwin",
+              output-file: "zig-out/lib/libsodium.dylib",
               file: "libsodium.dylib",
               rid: "osx-x64",
             }
           - {
               name: "iOS",
               os: macos-latest,
-              target: "aarch64-ios",
-              output-file: "libsodium.dylib",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-ios",
+              output-file: "zig-out/lib/libsodium.dylib",
               file: "libsodium.dylib",
               rid: "ios-arm64",
             }
           - {
               name: "Windows x86",
               os: windows-latest,
-              target: "x86-windows-gnu",
-              output-file: "libsodium.dll",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86-windows-gnu",
+              output-file: "zig-out/lib/libsodium_shared.dll",
               file: "sodium.dll",
               rid: "win-x86",
               arch: "x86"
@@ -89,8 +89,8 @@ jobs:
           - {
               name: "Windows x64",
               os: windows-latest,
-              target: "x86_64-windows-gnu",
-              output-file: "libsodium.dll",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-windows-gnu",
+              output-file: "zig-out/lib/libsodium_shared.dll",
               file: "sodium.dll",
               rid: "win-x64",
               arch: "x64"
@@ -98,8 +98,8 @@ jobs:
           - {
               name: "Windows Arm64",
               os: windows-latest,
-              target: "aarch64-windows-gnu",
-              output-file: "libsodium.dll",
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-windows-gnu",
+              output-file: "zig-out/lib/libsodium_shared.dll",
               file: "sodium.dll",
               rid: "win-arm64",
               arch: "arm64"
@@ -135,25 +135,14 @@ jobs:
       - name: Setup Android SDK
         if: contains(matrix.config.rid, 'android')
         uses: android-actions/setup-android@v3
-      - name: Workaround for iOS
-        if: contains(matrix.config.rid, 'ios')
-        shell: bash
-        run: |
-          SDK_IPHONE_PATH="$(xcrun --show-sdk-path --sdk iphoneos)"
-          zig libc > libc.txt
-          brew install gnu-sed
-          gsed -i "s|include_dir=|include_dir=$SDK_IPHONE_PATH|" libc.txt
-          gsed -i "s|sys_include_dir=|sys_include_dir=$SDK_IPHONE_PATH|" libc.txt
-          echo "ZIG_LIBC=$(pwd)/libc.txt" >> $GITHUB_ENV
-          cat libc.txt
       - name: Build on ${{ matrix.config.name }}
         shell: bash
         run: |
           cd libs/sodium
-          zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=${{ matrix.config.target }}
+          ${{ matrix.config.command }}
           mkdir -p "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native"
           rm -f "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
-          mv zig-out/lib/${{ matrix.config.output-file }} "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
+          mv ${{ matrix.config.output-file }} "${{ github.workspace }}/libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}"
       - name: "Update ${{ matrix.config.file }}"
         uses: EndBug/add-and-commit@v9
         with:
