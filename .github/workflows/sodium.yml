@@ -141,8 +141,9 @@ jobs:
         run: |
           SDK_IPHONE_PATH="$(xcrun --show-sdk-path --sdk iphoneos)"
           zig libc > libc.txt
-          sed -i "s|include_dir=|include_dir=$SDK_IPHONE_PATH|" libc.txt
-          sed -i "s|sys_include_dir=|sys_include_dir=$SDK_IPHONE_PATH|" libc.txt
+          brew install gnu-sed
+          gnu-sed -i "s|include_dir=|include_dir=$SDK_IPHONE_PATH|" libc.txt
+          gnu-sed -i "s|sys_include_dir=|sys_include_dir=$SDK_IPHONE_PATH|" libc.txt
           cat libc.txt
       - name: Build on ${{ matrix.config.name }}
         shell: bash
