@@ -24,8 +24,8 @@ jobs:
           - {
               name: "Android Arm64",
               os: ubuntu-latest,
-              command: "./dist-build/android-armv8-a.sh && ls -lsah libsodium-android-armv8-a+crypto",
-              output-file: "libsodium-android-armv8-a+crypto/usr/lib/libsodium.so",
+              command: "./dist-build/android-armv8-a.sh && ls -lsah libsodium-android-armv8-a+crypto/lib",
+              output-file: "libsodium-android-armv8-a+crypto/lib/libsodium.so",
               file: "libsodium.so",
               rid: "android-arm64",
           }
