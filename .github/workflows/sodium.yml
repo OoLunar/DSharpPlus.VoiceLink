@@ -118,6 +118,20 @@ jobs:
         with:
           version: 0.11.0
           cache: false
+      - name: Set up MSBuild
+        if: contains('win', matrix.config.rid)
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: ${{ matrix.config.arch }}
+      - name: Set up JDK 17
+        if: contains('android', matrix.config.rid)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Android SDK
+        if: contains('android', matrix.config.rid)
+        uses: android-actions/setup-android@v3
       - name: Build on ${{ matrix.config.name }}
         shell: bash
         run: |
