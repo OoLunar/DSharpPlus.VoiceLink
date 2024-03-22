@@ -24,7 +24,7 @@ jobs:
           - {
               name: "Android Arm64",
               os: ubuntu-latest,
-              command: "./dist-build/android-armv8-a.sh && ls -lsah libsodium-android-armv8-a+crypto/lib",
+              command: "./dist-build/android-armv8-a.sh",
               output-file: "libsodium-android-armv8-a+crypto/lib/libsodium.so",
               file: "libsodium.so",
               rid: "android-arm64",
@@ -80,8 +80,8 @@ jobs:
           - {
               name: "Windows x86",
               os: windows-latest,
-              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86-windows-gnu",
-              output-file: "zig-out/lib/libsodium_shared.dll",
+              command: "cd builds/msvc/build/ && cmd buildbase.bat ../vs2022/libsodium.sln 17 && cd ../../..",
+              output-file: "bin/Win32/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x86",
               arch: "x86"
@@ -89,8 +89,8 @@ jobs:
           - {
               name: "Windows x64",
               os: windows-latest,
-              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-windows-gnu",
-              output-file: "zig-out/lib/libsodium_shared.dll",
+              command: "cd builds/msvc/build/ && cmd buildbase.bat ../vs2022/libsodium.sln 17 && cd ../../..",
+              output-file: "bin/x64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-x64",
               arch: "x64"
@@ -98,8 +98,8 @@ jobs:
           - {
               name: "Windows Arm64",
               os: windows-latest,
-              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-windows-gnu",
-              output-file: "zig-out/lib/libsodium_shared.dll",
+              command: "cd builds/msvc/build/ && cmd buildbase.bat ../vs2022/libsodium.sln 17 && cd ../../..",
+              output-file: "bin/arm64/Release/v143/dynamic/libsodium.dll",
               file: "sodium.dll",
               rid: "win-arm64",
               arch: "arm64"
