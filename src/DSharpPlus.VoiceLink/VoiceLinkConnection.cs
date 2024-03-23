@@ -103,8 +103,7 @@ namespace DSharpPlus.VoiceLink
 
             _speakers.Clear();
             _heartbeatQueue.Clear();
-            WebsocketPing = TimeSpan.Zero;
-            UdpPing = TimeSpan.Zero;
+            HeartbeatPing = TimeSpan.Zero;
 
             await Extension._connectionDestroyed.InvokeAsync(Extension, new(this));
             Extension._connections.TryRemove(Guild.Id, out _);
