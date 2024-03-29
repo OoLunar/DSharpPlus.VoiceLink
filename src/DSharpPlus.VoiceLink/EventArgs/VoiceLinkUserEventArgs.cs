@@ -7,5 +7,6 @@ namespace DSharpPlus.VoiceLink.EventArgs
     {
         public required VoiceLinkConnection Connection { get; init; }
         public required DiscordMember Member { get; init; }
+        public required VoiceLinkUser? VoiceUser { get; init; }
     }
 }

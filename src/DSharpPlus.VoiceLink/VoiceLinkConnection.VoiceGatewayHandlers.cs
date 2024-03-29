@@ -139,7 +139,8 @@ namespace DSharpPlus.VoiceLink
             await connection.Extension._userConnected.InvokeAsync(connection.Extension, new VoiceLinkUserEventArgs()
             {
                 Connection = connection,
-                Member = await connection.Guild.GetMemberAsync(voiceClientConnectedPayload.UserId)
+                Member = await connection.Guild.GetMemberAsync(voiceClientConnectedPayload.UserId),
+                VoiceUser = null
             });
         }
 
@@ -151,16 +152,21 @@ namespace DSharpPlus.VoiceLink
             // We only receive a member's SSRC when they speak. This means they may not be within the speakers dictionary.
             // Since we're going to be receiving a lot more RTP packets than speaking payloads, we index by the SSRC.
             // This means we need to iterate through the speakers dictionary to find the user instead of just indexing.
-            if (connection._speakers.FirstOrDefault(x => x.Value.Member.Id == voiceClientDisconnectedPayload.UserId) is (uint ssrc, VoiceLinkUser voiceLinkUser))
+            if (connection._speakers.FirstOrDefault(x => x.Value.Member.Id == voiceClientDisconnectedPayload.UserId) is (uint, VoiceLinkUser) kvp)
             {
-                connection._speakers.Remove(ssrc);
-                voiceLinkUser._audioPipe.Writer.Complete();
+                connection._speakers.Remove(kvp.Key);
+                kvp.Value._audioPipe.Writer.Complete();
+            }
+            else
+            {
+                kvp = default;
             }
 
             await connection.Extension._userDisconnected.InvokeAsync(connection.Extension, new VoiceLinkUserEventArgs()
             {
                 Connection = connection,
-                Member = await connection.Guild.GetMemberAsync(voiceClientDisconnectedPayload.UserId)
+                Member = await connection.Guild.GetMemberAsync(voiceClientDisconnectedPayload.UserId),
+                VoiceUser = kvp.Value
             });
         }
 
