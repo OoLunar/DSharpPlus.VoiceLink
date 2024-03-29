@@ -419,7 +419,7 @@ namespace DSharpPlus.VoiceLink
                 int writtenBytes = voiceLinkUser.AudioDecoder.Decode(hasPacketLoss, decryptedAudio, audioBuffer);
 
                 // Write the audio to the pipe
-                voiceLinkUser._audioPipe.Writer.Advance(writtenBytes);
+                voiceLinkUser._audioPipe.Writer.Advance(maxBufferSize);
             }
             catch (Exception error)
             {
