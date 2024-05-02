@@ -312,31 +312,38 @@ namespace DSharpPlus.VoiceLink
 
         private async Task ReceiveAudioLoopAsync()
         {
-            while (!_cancellationTokenSource.IsCancellationRequested)
+            try
             {
-                // HEY. YOU. THE PERSON WHO'S TOUCHING THIS CODE.
-                // This is a hotpath. Any modifications to this code should always
-                // lead to equal or better performance. If you're not sure, don't touch it.
-                UdpReceiveResult udpReceiveResult = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
-                if (RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
+                while (!_cancellationTokenSource.IsCancellationRequested)
                 {
-                    // When the VoiceLinkUser is not null, this means that voice data was
-                    // successfully decrypted and decoded and is ready to be consumed by the dev.
-                    VoiceLinkUser? voiceLinkUser = HandleRtpVoicePacket(udpReceiveResult.Buffer);
-                    if (voiceLinkUser is not null)
+                    // HEY. YOU. THE PERSON WHO'S TOUCHING THIS CODE.
+                    // This is a hotpath. Any modifications to this code should always
+                    // lead to equal or better performance. If you're not sure, don't touch it.
+                    UdpReceiveResult udpReceiveResult = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
+                    if (RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
                     {
-                        await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
+                        // When the VoiceLinkUser is not null, this means that voice data was
+                        // successfully decrypted and decoded and is ready to be consumed by the dev.
+                        VoiceLinkUser? voiceLinkUser = HandleRtpVoicePacket(udpReceiveResult.Buffer);
+                        if (voiceLinkUser is not null)
+                        {
+                            await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
+                        }
+                    }
+                    else if (RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
+                    {
+                        HandleRtcpReceiverReportPacket(udpReceiveResult.Buffer);
+                    }
+                    else
+                    {
+                        _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
+                        _logger.LogDebug("Connection {GuildId}: Packet: {Packet}", Guild.Id, udpReceiveResult.Buffer.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
                     }
                 }
-                else if (RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
-                {
-                    HandleRtcpReceiverReportPacket(udpReceiveResult.Buffer);
-                }
-                else
-                {
-                    _logger.LogWarning("Connection {GuildId}: Received an unknown packet with a length of {Length} bytes. It is not an RTP Header or a keep alive packet. Skipping.", Guild.Id, udpReceiveResult.Buffer.Length);
-                    _logger.LogDebug("Connection {GuildId}: Packet: {Packet}", Guild.Id, udpReceiveResult.Buffer.Select(x => x.ToString("X2", CultureInfo.InvariantCulture)));
-                }
+            }
+            catch (OperationCanceledException)
+            {
+                return;
             }
         }
 

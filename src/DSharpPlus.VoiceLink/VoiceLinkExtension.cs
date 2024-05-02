@@ -79,7 +79,7 @@ namespace DSharpPlus.VoiceLink
             {
                 throw new ArgumentNullException(nameof(channel));
             }
-            else if (channel.Type is not ChannelType.Voice or ChannelType.Stage)
+            else if (channel.Type is not DiscordChannelType.Voice or DiscordChannelType.Stage)
             {
                 throw new ArgumentException("Channel must be a voice or stage channel.", nameof(channel));
             }
@@ -96,18 +96,18 @@ namespace DSharpPlus.VoiceLink
                 throw new InvalidOperationException($"The bot is already connected to a voice channel in guild {channel.Guild.Id}. The bot may only be connected to one voice channel per guild.");
             }
 
-            Permissions botPermissions = channel.PermissionsFor(channel.Guild.CurrentMember);
-            if (!botPermissions.HasPermission(Permissions.AccessChannels | Permissions.UseVoice))
+            DiscordPermissions botPermissions = channel.PermissionsFor(channel.Guild.CurrentMember);
+            if (!botPermissions.HasPermission(DiscordPermissions.AccessChannels | DiscordPermissions.UseVoice))
             {
-                throw new InvalidOperationException($"The bot must have the {Permissions.AccessChannels} and {Permissions.UseVoice} permissions to connect to a channel.");
+                throw new InvalidOperationException($"The bot must have the {DiscordPermissions.AccessChannels} and {DiscordPermissions.UseVoice} permissions to connect to a channel.");
             }
-            else if (!botPermissions.HasPermission(Permissions.Speak) && !voiceState.HasFlag(VoiceState.UserMuted))
+            else if (!botPermissions.HasPermission(DiscordPermissions.Speak) && !voiceState.HasFlag(VoiceState.UserMuted))
             {
-                throw new InvalidOperationException($"The bot must have the {Permissions.Speak} permission to speak in a voice channel.");
+                throw new InvalidOperationException($"The bot must have the {DiscordPermissions.Speak} permission to speak in a voice channel.");
             }
-            else if (channel.UserLimit >= channel.Users.Count && !botPermissions.HasPermission(Permissions.ManageChannels))
+            else if (channel.UserLimit >= channel.Users.Count && !botPermissions.HasPermission(DiscordPermissions.ManageChannels))
             {
-                throw new InvalidOperationException($"The voice channel is full and the bot must have the {Permissions.ManageChannels} permission to connect to override the channel user limit.");
+                throw new InvalidOperationException($"The voice channel is full and the bot must have the {DiscordPermissions.ManageChannels} permission to connect to override the channel user limit.");
             }
 
             _logger.LogDebug("Connecting to voice channel {ChannelId} in guild {GuildId}.", channel.Id, channel.Guild.Id);
