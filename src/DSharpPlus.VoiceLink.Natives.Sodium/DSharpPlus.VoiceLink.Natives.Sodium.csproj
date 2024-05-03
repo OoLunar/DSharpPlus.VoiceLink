@@ -8,6 +8,6 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="$(ProjectRoot)/libs/libsodium/*" CopyToOutputDirectory="Always" PackagePath="runtimes/" />
+    <Content CopyToOutputDirectory="PreserveNewest" Include="$(ProjectRoot)/libs/libsodium/**/*" Link="runtimes/%(RecursiveDir)%(FileName)%(Extension)" Pack="true" PackagePath="runtimes/%(RecursiveDir)%(FileName)%(Extension)" />
   </ItemGroup>
 </Project>

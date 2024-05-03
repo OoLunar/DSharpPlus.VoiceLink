@@ -8,6 +8,6 @@
     <IsPackable>true</IsPackable>
   </PropertyGroup>
   <ItemGroup>
-    <Content Include="$(ProjectRoot)/libs/libopus/*" CopyToOutputDirectory="Always" PackagePath="runtimes/" />
+    <Content CopyToOutputDirectory="PreserveNewest" Include="$(ProjectRoot)/libs/libopus/**/*" Link="runtimes/%(RecursiveDir)%(FileName)%(Extension)" Pack="true" PackagePath="runtimes/%(RecursiveDir)%(FileName)%(Extension)" />
   </ItemGroup>
 </Project>
