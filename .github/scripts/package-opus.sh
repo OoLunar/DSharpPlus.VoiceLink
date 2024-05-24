@@ -12,6 +12,16 @@ git fetch --tags
 OPUS_VERSION="$(git describe --tags $(git rev-list --tags --max-count=1))"
 echo "OPUS_VERSION=$OPUS_VERSION" >> $GITHUB_ENV
 
+# Check if the output file exists and if we've already built it for this version
+EXPORT_DIR="$WORKSPACE/libs/libopus/$RID/native/"
+if [ -f "$EXPORT_DIR/$FILE" ]; then
+  COMMIT_MESSAGE="$(git log -1 --pretty=%B -- "$EXPORT_DIR/$FILE")"
+  if [[ "$COMMIT_MESSAGE" == *"$OPUS_VERSION"* ]]; then
+    echo "Already built $FILE for $OPUS_VERSION"
+    exit 0
+  fi
+fi
+
 # Checkout the latest tag
 git checkout "$OPUS_VERSION"
 
@@ -21,23 +31,10 @@ cmake --build build --config Release
 
 EXPORT_DIR="$WORKSPACE/libs/libopus/$RID/native/"
 
-# Do NOT exit on error
-set +e
-
-# Check if the output file has changed, since sometimes Git struggles on Windows
-cmp --silent build/$FIND_FILE "$EXPORT_DIR/$FILE"
-if [ $? -eq 0 ]; then
-  echo 'No changes detected'
-  exit 0
-fi
-
-# Exit on error
-set -e
-
 # Move the output file to the correct location
 mkdir -p              "$EXPORT_DIR"
 rm -f                 "$EXPORT_DIR/$FILE"
 mv build/$FIND_FILE   "$EXPORT_DIR/$FILE"
 
 # Delay committing to prevent race conditions
-sleep "$(( $JOB_INDEX * 2 ))"
+sleep "$(( $JOB_INDEX * 5 ))"
