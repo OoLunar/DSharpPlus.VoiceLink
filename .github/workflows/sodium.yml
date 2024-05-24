@@ -70,7 +70,7 @@ jobs:
           }
           - {
             os: macos-latest,
-            command: "../../.github/scripts/apple-xcframework.sh",
+            command: "bash ../../.github/scripts/apple-xcframework.sh",
             output-file: "libsodium-apple/ios/lib/libsodium.dylib",
             file: "libsodium.dylib",
             rid: "ios-arm64",
