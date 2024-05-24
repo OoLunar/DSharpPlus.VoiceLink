@@ -1,0 +1,138 @@
+name: Update Sodium
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/sodium.yml'
+      - '.github/scripts/package-sodium.sh'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Sodium for ${{ matrix.config.rid }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+            os: ubuntu-latest,
+            command: "./dist-build/android-armv8-a.sh",
+            output-file: "libsodium-android-armv8-a+crypto/lib/libsodium.so",
+            file: "libsodium.so",
+            rid: "android-arm64",
+          }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu",
+            output-file: "zig-out/lib/libsodium.so",
+            file: "libsodium.so",
+            rid: "linux-x64",
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-musl",
+            output-file: "zig-out/lib/libsodium.so",
+            file: "libsodium.so",
+            rid: "linux-x64-musl",
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-gnu",
+            output-file: "zig-out/lib/libsodium.so",
+            file: "libsodium.so",
+            rid: "linux-arm64",
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-musl",
+            output-file: "zig-out/lib/libsodium.so",
+            file: "libsodium.so",
+            rid: "linux-arm64-musl",
+            }
+          - {
+            os: macos-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-macos",
+            output-file: "zig-out/lib/libsodium.dylib",
+            file: "libsodium.dylib",
+            rid: "osx-x64",
+            }
+          - {
+            os: macos-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-macos",
+            output-file: "zig-out/lib/libsodium.dylib",
+            file: "libsodium.dylib",
+            rid: "osx-arm64",
+          }
+          - {
+            os: macos-latest,
+            command: "../../.github/scripts/apple-xcframework.sh",
+            output-file: "libsodium-apple/ios/lib/libsodium.dylib",
+            file: "libsodium.dylib",
+            rid: "ios-arm64",
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86-windows",
+            output-file: "zig-out/lib/sodium_shared.dll",
+            file: "sodium.dll",
+            rid: "win-x86",
+            arch: "x86"
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-windows",
+            output-file: "zig-out/lib/sodium_shared.dll",
+            file: "sodium.dll",
+            rid: "win-x64",
+            arch: "x64"
+            }
+          - {
+            os: ubuntu-latest,
+            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-windows",
+            output-file: "zig-out/lib/sodium_shared.dll",
+            file: "sodium.dll",
+            rid: "win-arm64",
+            arch: "arm64"
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        if: contains(matrix.config.command, 'zig')
+        with:
+          version: 0.11.0
+      - name: Set up JDK 17
+        if: contains(matrix.config.rid, 'android')
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Android SDK
+        if: contains(matrix.config.rid, 'android')
+        uses: android-actions/setup-android@v3
+      - name: "Build ${{ matrix.config.file }}"
+        shell: bash
+        run: |
+          export WORKSPACE='${{ github.workspace }}'
+          export COMMAND='${{ matrix.config.command }}'
+          export OUTPUT_FILE='${{ matrix.config.output-file }}'
+          export FILE='${{ matrix.config.file }}'
+          export RID='${{ matrix.config.rid }}'
+          export JOB_INDEX='${{ strategy.job-index }}'
+          bash '${{ github.workspace }}/.github/scripts/package-sodium.sh'
+      - name: "Update ${{ matrix.config.rid }}"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libsodium/"
+          default_author: github_actions
+          message: Update ${{ matrix.config.rid }} to ${{ env.SODIUM_VERSION }}
+          pull: "--rebase --autostash"
+          push: true

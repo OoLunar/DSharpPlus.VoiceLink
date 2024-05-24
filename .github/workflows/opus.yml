@@ -1,0 +1,164 @@
+name: Update Opus
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/opus.yml'
+      - '.github/scripts/package-opus.sh'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build Opus for ${{ matrix.config.rid }}
+    runs-on: ${{ matrix.config.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        config:
+          - {
+            os: ubuntu-latest,
+            install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool gcc cmake make",
+            args: "-DCMAKE_TOOLCHAIN_FILE=$ANDROID_HOME/ndk/25.2.9519653/build/cmake/android.toolchain.cmake -DANDROID_ABI=arm64-v8a",
+            find-file: "libopus.so",
+            file: "libopus.so",
+            rid: "android-arm64",
+          }
+          - {
+              os: ubuntu-latest,
+              install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool gcc cmake make",
+              args: "",
+              find-file: "libopus.so.*.*.*",
+              file: "libopus.so",
+              rid: "linux-x64"
+            }
+          - {
+              os: ubuntu-latest,
+              install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool cmake make \
+                && wget https://musl.cc/x86_64-linux-musl-cross.tgz \
+                && tar xzf x86_64-linux-musl-cross.tgz \
+                && export PATH=\\\"$(pwd)/x86_64-linux-musl-cross/bin:$PATH\\\" \
+                && export CC=x86_64-linux-musl-gcc \
+                && alias gcc=x86_64-linux-musl-gcc",
+              args: "",
+              find-file: "libopus.so.*.*.*",
+              file: "libopus.so",
+              rid: "linux-x64-musl"
+            }
+          - {
+              os: ubuntu-latest,
+              install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool gcc-arm-linux-gnueabi binutils-arm-linux-gnueabi cmake make \
+                && export CC=arm-linux-gnueabi-gcc make \
+                && alias gcc=arm-linux-gnueabi-gcc",
+              args: "",
+              find-file: "libopus.so.*.*.*",
+              file: "libopus.so",
+              rid: "linux-arm64"
+            }
+          - {
+              os: ubuntu-latest,
+              install-deps: "sudo apt-get update && sudo apt-get -y install autoconf automake libtool cmake make \
+                && wget https://musl.cc/aarch64-linux-musl-cross.tgz \
+                && tar xzf aarch64-linux-musl-cross.tgz \
+                && export PATH=\\\"$(pwd)/aarch64-linux-musl-cross/bin:$PATH\\\" \
+                && export CC=aarch64-linux-musl-gcc \
+                && alias gcc=aarch64-linux-musl-gcc",
+              args: "",
+              find-file: "libopus.so.*.*.*",
+              file: "libopus.so",
+              rid: "linux-arm64-musl"
+            }
+          - {
+              os: macos-latest,
+              install-deps: "brew install autoconf automake libtool gcc cmake make && export PATH=\\\"/usr/local/opt/make/libexec/gnubin:$PATH\\\"",
+              args: "",
+              find-file: "libopus.*.*.*.dylib",
+              file: "libopus.dylib",
+              rid: "osx-x64"
+            }
+          - {
+              os: macos-latest,
+              install-deps: "brew install autoconf automake libtool gcc cmake make && export PATH=\\\"/usr/local/opt/make/libexec/gnubin:$PATH\\\"",
+              args: "-DCMAKE_OSX_ARCHITECTURES=arm64",
+              find-file: "libopus.*.*.*.dylib",
+              file: "libopus.dylib",
+              rid: "osx-arm64"
+            }
+          - {
+              os: macos-latest,
+              install-deps: "brew install autoconf automake libtool gcc cmake make && export PATH=\\\"/usr/local/opt/make/libexec/gnubin:$PATH\\\"",
+              args: "-DCMAKE_SYSTEM_NAME=iOS -DCMAKE_OSX_ARCHITECTURES=arm64",
+              find-file: "libopus.*.*.*.dylib",
+              file: "libopus.dylib",
+              rid: "ios-arm64"
+            }
+          - {
+              os: windows-latest,
+              install-deps: "",
+              args: "-A Win32",
+              find-file: "Release/opus.dll",
+              file: "opus.dll",
+              rid: "win-x86",
+              arch: "x86"
+            }
+          - {
+              os: windows-latest,
+              install-deps: "",
+              args: "-A x64",
+              find-file: "Release/opus.dll",
+              file: "opus.dll",
+              rid: "win-x64",
+              arch: "x64"
+            }
+          - {
+              os: windows-latest,
+              install-deps: "",
+              args: "-A ARM64",
+              find-file: "Release/opus.dll",
+              file: "opus.dll",
+              rid: "win-arm64",
+              arch: "arm64"
+            }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - name: Set up MSBuild
+        if: contains('win', matrix.config.rid)
+        uses: microsoft/setup-msbuild@v2
+        with:
+          msbuild-architecture: ${{ matrix.config.arch }}
+      - name: Set up JDK 17
+        if: contains('android', matrix.config.rid)
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+      - name: Setup Android SDK
+        if: contains('android', matrix.config.rid)
+        uses: android-actions/setup-android@v3
+      - name: Install dependencies
+        shell: bash
+        run: ${{ matrix.config.install-deps }}
+      - name: "Build ${{ matrix.config.file }}"
+        shell: bash
+        run: |
+          export WORKSPACE='${{ github.workspace }}'
+          export COMMAND_ARGS="${{ matrix.config.args }}"
+          export FIND_FILE='${{ matrix.config.find-file }}'
+          export FILE='${{ matrix.config.file }}'
+          export RID='${{ matrix.config.rid }}'
+          export JOB_INDEX='${{ strategy.job-index }}'
+          bash '${{ github.workspace }}/.github/scripts/package-opus.sh'
+      - name: "Update ${{ matrix.config.rid }}"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "libs/libopus/"
+          default_author: github_actions
+          message: Update ${{ matrix.config.rid }} to ${{ env.OPUS_VERSION }}
+          pull: "--rebase --autostash"
+          push: true
