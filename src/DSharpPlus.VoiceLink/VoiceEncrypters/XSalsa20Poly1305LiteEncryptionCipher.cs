@@ -1,25 +1,18 @@
 using System;
 using System.Buffers.Binary;
 using System.Collections.Concurrent;
-using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Rtp;
 using DSharpPlus.VoiceLink.Sodium;
 
-namespace DSharpPlus.VoiceLink.VoiceEncrypters
+namespace DSharpPlus.VoiceLink.VoiceEncryptionCiphers
 {
-    public sealed record XSalsa20Poly1305Lite : IVoiceEncrypter
+    public sealed record XSalsa20Poly1305LiteEncryptionCipher : IVoiceEncryptionCipher
     {
         /// <inheritdoc/>
-        public string Name { get; init; } = "xsalsa20_poly1305_lite";
+        public string Name => "xsalsa20_poly1305_lite";
 
-        /// <inheritdoc/>
         public int NonceSize { get; init; } = 4;
-
-        /// <inheritdoc/>
-        public EncryptionMode EncryptionMode { get; init; } = EncryptionMode.XSalsa20Poly1305Lite;
-
-        /// <inheritdoc/>
-        public ConcurrentDictionary<uint, uint> NonceCounter { get; } = new();
+        public ConcurrentDictionary<uint, uint> NonceCounter { get; init; } = new();
 
         public int GetEncryptedSize(int length) => length + SodiumXSalsa20Poly1305.MacSize;
         public int GetDecryptedSize(int length) => length - SodiumXSalsa20Poly1305.MacSize;

@@ -1,17 +1,23 @@
-using System;
-using DSharpPlus.VoiceLink.AudioDecoders;
-using DSharpPlus.VoiceLink.VoiceEncrypters;
-using Microsoft.Extensions.DependencyInjection;
+using DSharpPlus.VoiceLink.AudioCodecs;
+using DSharpPlus.VoiceLink.VoiceEncryptionCiphers;
 
 namespace DSharpPlus.VoiceLink
 {
     public sealed record VoiceLinkConfiguration
     {
-        public IServiceCollection ServiceCollection { get; set; } = new ServiceCollection();
-        internal IServiceProvider ServiceProvider => _serviceProvider ??= ServiceCollection.BuildServiceProvider();
-        private IServiceProvider? _serviceProvider;
+        /// <summary>
+        /// How many missed heartbeats before the voice client attempts to reconnect.
+        /// </summary>
         public int MaxHeartbeatQueueSize { get; set; } = 5;
-        public IVoiceEncrypter VoiceEncrypter { get; set; } = new XSalsa20Poly1305();
-        public AudioDecoderFactory AudioDecoderFactory { get; set; } = _ => new Pcm16BitAudioDecoder();
+
+        /// <summary>
+        ///
+        /// </summary>
+        public IVoiceEncryptionCipher VoiceEncryptionCipher { get; set; } = new XSalsa20Poly1305EncryptionCipher();
+
+        /// <summary>
+        /// A delegate which creates a new audio codec instance. The audio codec is responsible for encoding and decoding audio data into the user's desired format.
+        /// </summary>
+        public AudioCodecFactory AudioCodecFactory { get; set; } = _ => new Pcm16BitAudioCodec();
     }
 }

@@ -28,27 +28,26 @@ namespace DSharpPlus.VoiceLink
         public IReadOnlyDictionary<ulong, VoiceLinkConnection> Connections => _connections;
         internal readonly ConcurrentDictionary<ulong, VoiceLinkConnection> _connections = new();
         internal readonly ConcurrentDictionary<ulong, VoiceLinkPendingConnection> _pendingConnections = new();
-        private readonly ILogger<VoiceLinkExtension> _logger;
+        internal ILogger<VoiceLinkExtension> _logger = null!;
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionCreated { add => _connectionCreated.Register(value); remove => _connectionCreated.Unregister(value); }
-        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionCreated = new("VOICELINK_CONNECTION_CREATED", EverythingWentWrongErrorHandler);
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionCreated = new(VoiceLinkErrorHandler.Instance);
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionDestroyed { add => _connectionDestroyed.Register(value); remove => _connectionDestroyed.Unregister(value); }
-        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionDestroyed = new("VOICELINK_CONNECTION_DESTROYED", EverythingWentWrongErrorHandler);
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionDestroyed = new(VoiceLinkErrorHandler.Instance);
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserEventArgs> UserConnected { add => _userConnected.Register(value); remove => _userConnected.Unregister(value); }
-        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userConnected = new("VOICELINK_USER_CONNECTED", EverythingWentWrongErrorHandler);
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userConnected = new(VoiceLinkErrorHandler.Instance);
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserSpeakingEventArgs> UserSpeaking { add => _userSpeaking.Register(value); remove => _userSpeaking.Unregister(value); }
-        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserSpeakingEventArgs> _userSpeaking = new("VOICELINK_USER_SPEAKING", EverythingWentWrongErrorHandler);
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserSpeakingEventArgs> _userSpeaking = new(VoiceLinkErrorHandler.Instance);
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserEventArgs> UserDisconnected { add => _userDisconnected.Register(value); remove => _userDisconnected.Unregister(value); }
-        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userDisconnected = new("VOICELINK_USER_DISCONNECTED", EverythingWentWrongErrorHandler);
+        internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userDisconnected = new(VoiceLinkErrorHandler.Instance);
 
         public VoiceLinkExtension(VoiceLinkConfiguration configuration)
         {
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-            _logger = configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
             if (SodiumNativeMethods.Init() == -1)
             {
                 throw new SodiumException("Sodium initialization failed. Is it installed?");
@@ -69,6 +68,7 @@ namespace DSharpPlus.VoiceLink
             Client = client;
             Client.VoiceStateUpdated += VoiceStateUpdateEventHandlerAsync;
             Client.VoiceServerUpdated += VoiceServerUpdateEventHandlerAsync;
+            _logger = client.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
         }
 
         public override void Dispose() { }
@@ -156,7 +156,7 @@ namespace DSharpPlus.VoiceLink
             return connection;
         }
 
-        private Task VoiceStateUpdateEventHandlerAsync(DiscordClient client, VoiceStateUpdateEventArgs eventArgs)
+        private Task VoiceStateUpdateEventHandlerAsync(DiscordClient client, VoiceStateUpdatedEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -175,7 +175,7 @@ namespace DSharpPlus.VoiceLink
             return Task.CompletedTask;
         }
 
-        private Task VoiceServerUpdateEventHandlerAsync(DiscordClient client, VoiceServerUpdateEventArgs eventArgs)
+        private Task VoiceServerUpdateEventHandlerAsync(DiscordClient client, VoiceServerUpdatedEventArgs eventArgs)
         {
             if (client is null)
             {
@@ -193,15 +193,5 @@ namespace DSharpPlus.VoiceLink
 
             return Task.CompletedTask;
         }
-
-        /// <summary>
-        /// The event handler used to log all unhandled exceptions, usually from when <see cref="_commandErrored"/> itself errors.
-        /// </summary>
-        /// <param name="asyncEvent">The event that errored.</param>
-        /// <param name="error">The error that occurred.</param>
-        /// <param name="handler">The handler/method that errored.</param>
-        /// <param name="sender">The extension.</param>
-        /// <param name="eventArgs">The event arguments passed to <paramref name="handler"/>.</param>
-        private static void EverythingWentWrongErrorHandler<TArgs>(AsyncEvent<VoiceLinkExtension, TArgs> asyncEvent, Exception error, AsyncEventHandler<VoiceLinkExtension, TArgs> handler, VoiceLinkExtension sender, TArgs eventArgs) where TArgs : AsyncEventArgs => sender._logger.LogError(error, "Event handler '{Method}' for event {AsyncEvent} threw an unhandled exception.", handler.Method, asyncEvent.Name);
     }
 }

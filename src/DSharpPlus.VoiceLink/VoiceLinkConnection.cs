@@ -14,12 +14,12 @@ using System.Threading.Tasks;
 using DSharpPlus.Entities;
 using DSharpPlus.EventArgs;
 using DSharpPlus.Net.Abstractions;
-using DSharpPlus.VoiceLink.AudioDecoders;
+using DSharpPlus.VoiceLink.AudioCodecs;
 using DSharpPlus.VoiceLink.Commands;
 using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Payloads;
 using DSharpPlus.VoiceLink.Rtp;
-using DSharpPlus.VoiceLink.VoiceEncrypters;
+using DSharpPlus.VoiceLink.VoiceEncryptionCiphers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -41,8 +41,8 @@ namespace DSharpPlus.VoiceLink
         private ILogger<VoiceLinkConnection> _logger { get; init; }
         private CancellationTokenSource _cancellationTokenSource { get; init; } = new();
         private Dictionary<uint, VoiceLinkUser> _speakers { get; init; } = [];
-        private IVoiceEncrypter _voiceEncrypter { get; init; }
-        private AudioDecoderFactory _audioDecoderFactory { get; init; }
+        private IVoiceEncryptionCipher _voiceEncrypter { get; init; }
+        private AudioCodecFactory _audioDecoderFactory { get; init; }
         private byte[] _secretKey { get; set; } = [];
         private Pipe _audioPipe { get; init; } = new();
 
@@ -61,9 +61,9 @@ namespace DSharpPlus.VoiceLink
             VoiceState = voiceState;
             Extension = extension;
             Channel = channel;
-            _logger = extension.Configuration.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
-            _voiceEncrypter = extension.Configuration.VoiceEncrypter;
-            _audioDecoderFactory = extension.Configuration.AudioDecoderFactory;
+            _logger = extension.Client.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
+            _voiceEncrypter = extension.Configuration.VoiceEncryptionCipher;
+            _audioDecoderFactory = extension.Configuration.AudioCodecFactory;
         }
 
         public async ValueTask DisconnectAsync()
@@ -157,7 +157,7 @@ namespace DSharpPlus.VoiceLink
             await InitializeAsync(pendingConnection.VoiceStateUpdateEventArgs!, pendingConnection.VoiceServerUpdateEventArgs!, _cancellationTokenSource.Token);
         }
 
-        public async ValueTask InitializeAsync(VoiceStateUpdateEventArgs voiceStateUpdateEventArgs, VoiceServerUpdateEventArgs voiceServerUpdateEventArgs, CancellationToken cancellationToken = default)
+        public async ValueTask InitializeAsync(VoiceStateUpdatedEventArgs voiceStateUpdateEventArgs, VoiceServerUpdatedEventArgs voiceServerUpdateEventArgs, CancellationToken cancellationToken = default)
         {
             // Setup endpoint
             if (voiceServerUpdateEventArgs.Endpoint is null)
@@ -381,7 +381,7 @@ namespace DSharpPlus.VoiceLink
                 // We're explicitly passing a null member, however the dev should never expect this to
                 // be null as the speaking event should always fire once we receive both the user and the ssrc.
                 // TL;DR, this is to ensure we never lose any audio data.
-                voiceLinkUser = new(this, rtpHeader.Ssrc, null!, _audioDecoderFactory(Extension.Configuration.ServiceProvider), rtpHeader.Sequence);
+                voiceLinkUser = new(this, rtpHeader.Ssrc, null!, _audioDecoderFactory(Extension.Client.ServiceProvider), rtpHeader.Sequence);
                 _speakers.Add(rtpHeader.Ssrc, voiceLinkUser);
             }
 

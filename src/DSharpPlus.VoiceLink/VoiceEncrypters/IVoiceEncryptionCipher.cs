@@ -1,13 +1,11 @@
 using System;
-using DSharpPlus.VoiceLink.Enums;
 using DSharpPlus.VoiceLink.Rtp;
 
-namespace DSharpPlus.VoiceLink.VoiceEncrypters
+namespace DSharpPlus.VoiceLink.VoiceEncryptionCiphers
 {
-    public interface IVoiceEncrypter
+    public interface IVoiceEncryptionCipher
     {
-        string Name { get; init; }
-        EncryptionMode EncryptionMode { get; init; }
+        string Name { get; }
 
         int GetEncryptedSize(int length);
         int GetDecryptedSize(int length);

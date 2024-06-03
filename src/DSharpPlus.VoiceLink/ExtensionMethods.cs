@@ -1,23 +1,15 @@
 using System;
 using System.Collections.Generic;
 using System.IO.Pipelines;
-using System.Linq;
 using System.Net.WebSockets;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using DSharpPlus;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Logging.Abstractions;
 
 namespace DSharpPlus.VoiceLink
 {
     public static class ExtensionMethods
     {
-        private static readonly Type _shardedLoggerFactoryType = typeof(DiscordClient).Assembly.GetType("DSharpPlus.ShardedLoggerFactory", true)!;
-
         /// <summary>
         /// Registers the extension with the <see cref="DiscordClient"/>.
         /// </summary>
@@ -38,49 +30,7 @@ namespace DSharpPlus.VoiceLink
                 throw new InvalidOperationException("The VoiceLink extension requires the GuildVoiceStates intent.");
             }
 
-            configuration ??= new();
-            ServiceDescriptor? currentLoggingImplementation = configuration.ServiceCollection.FirstOrDefault(service => service.ServiceType == typeof(ILoggerFactory));
-
-            // There are 4 scenarios here:
-            // - The user does not provide a logging implementation.
-            // - The user provides a logging implementation only to the DiscordClient.
-            // - The user provides a the default ShardedLoggerFactory implementation through the services
-            // - The user provides a custom logging implementation through the services
-
-            // No implementation provided
-            if (currentLoggingImplementation is null)
-            {
-                // Check if the client has a valid logging implementation
-                Type clientType = client.Logger.GetType();
-                if (clientType != _shardedLoggerFactoryType)
-                {
-                    Type[] clientInterfaces = clientType.GetInterfaces();
-                    if (clientInterfaces.Any(@interface => @interface.IsGenericType && @interface.GetGenericTypeDefinition() == typeof(ILogger<>)))
-                    {
-                        configuration.ServiceCollection.AddSingleton(typeof(ILogger<>), client.Logger);
-                    }
-
-                    if (clientInterfaces.Contains(typeof(ILoggerFactory)))
-                    {
-                        configuration.ServiceCollection.AddSingleton(typeof(ILoggerFactory), client.Logger);
-                    }
-                }
-                else
-                {
-                    Console.WriteLine($"No logging system set, using a {nameof(NullLoggerFactory)}. This is not recommended, please provide a logging system so you can see errors.");
-                    configuration.ServiceCollection.AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-                }
-            }
-            // Check if they provided the ShardedLoggerFactory explicitly to the services
-            else if (currentLoggingImplementation.ServiceType == _shardedLoggerFactoryType)
-            {
-                Console.WriteLine($"ShardedLoggerFactory detected, using {nameof(NullLoggerFactory)} instead. VoiceLink is NOT compatible with the default logging system that DSharpPlus provides!");
-                configuration.ServiceCollection
-                    .RemoveAll<ILoggerFactory>().RemoveAll(typeof(ILogger<>)) // Remove the default logging implementation, if set
-                    .AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-            }
-
-            VoiceLinkExtension extension = new(configuration);
+            VoiceLinkExtension extension = new(configuration ?? new());
             client.AddExtension(extension);
             return extension;
         }
@@ -93,24 +43,12 @@ namespace DSharpPlus.VoiceLink
         public static async Task<IReadOnlyDictionary<int, VoiceLinkExtension>> UseVoiceLinkAsync(this DiscordShardedClient shardedClient, VoiceLinkConfiguration? configuration = null)
         {
             ArgumentNullException.ThrowIfNull(shardedClient);
-
-            _ = await shardedClient.InitializeShardsAsync();
             configuration ??= new();
 
-            ServiceDescriptor? currentLoggingImplementation = configuration.ServiceCollection.FirstOrDefault(service => service.ServiceType == typeof(ILoggerFactory));
-            if (currentLoggingImplementation is null)
-            {
-                Console.WriteLine($"No logging system set, using a {nameof(NullLoggerFactory)}. This is not recommended, please provide a logging system so you can see errors.");
-                _ = configuration.ServiceCollection.AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-            }
-            else if (currentLoggingImplementation.ServiceType == _shardedLoggerFactoryType && shardedClient.Logger.GetType() == _shardedLoggerFactoryType)
-            {
-                Console.WriteLine($"ShardedLoggerFactory detected, using {nameof(NullLoggerFactory)} instead. VoiceLink is NOT compatible with the default logging system that DSharpPlus provides!");
-                _ = configuration.ServiceCollection
-                    .RemoveAll<ILoggerFactory>().RemoveAll(typeof(ILogger<>)) // Remove the default logging implementation, if set
-                    .AddSingleton<ILoggerFactory, NullLoggerFactory>().AddSingleton(typeof(ILogger<>), typeof(NullLogger<>));
-            }
+            // Figure out how many shards we have
+            _ = await shardedClient.InitializeShardsAsync();
 
+            // Register the extension on each shard
             Dictionary<int, VoiceLinkExtension> extensions = [];
             foreach (DiscordClient shard in shardedClient.ShardClients.Values)
             {

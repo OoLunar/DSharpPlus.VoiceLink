@@ -1,8 +1,8 @@
 using System;
 
-namespace DSharpPlus.VoiceLink.AudioDecoders
+namespace DSharpPlus.VoiceLink.AudioCodecs
 {
-    public class OpusAudioDecoder : IAudioDecoder
+    public class OpusAudioCodec : IAudioCodec
     {
         private const int CHANNELS = 2;
         private const int MAX_FRAME_SIZE = 5760;

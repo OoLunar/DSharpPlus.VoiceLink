@@ -6,7 +6,7 @@ namespace DSharpPlus.VoiceLink
     internal class VoiceLinkPendingConnection
     {
         public SemaphoreSlim Semaphore { get; init; } = new(0, 2);
-        public VoiceStateUpdateEventArgs? VoiceStateUpdateEventArgs { get; internal set; }
-        public VoiceServerUpdateEventArgs? VoiceServerUpdateEventArgs { get; internal set; }
+        public VoiceStateUpdatedEventArgs? VoiceStateUpdateEventArgs { get; internal set; }
+        public VoiceServerUpdatedEventArgs? VoiceServerUpdateEventArgs { get; internal set; }
     }
 }

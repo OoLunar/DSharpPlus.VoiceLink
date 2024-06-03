@@ -5,7 +5,6 @@ using System.IO;
 using System.Threading.Tasks;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 using Serilog;
 using Serilog.Events;
 using Serilog.Filters;
@@ -54,18 +53,16 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
                 logger.AddSerilog(loggerConfiguration.CreateLogger());
             });
 
-            DiscordClient client = new(new()
-            {
-                Token = Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? throw new InvalidOperationException("DISCORD_TOKEN environment variable is not set or is incorrect."),
-                Intents = DiscordIntents.All,
-                LoggerFactory = services.BuildServiceProvider().GetRequiredService<ILoggerFactory>()
-            });
+            DiscordClientBuilder clientBuilder = DiscordClientBuilder.CreateDefault(
+                token: Environment.GetEnvironmentVariable("DISCORD_TOKEN") ?? throw new InvalidOperationException("DISCORD_TOKEN environment variable is not set or is incorrect."),
+                intents: DiscordIntents.All,
+                serviceCollection: services
+            );
 
-            VoiceLinkExtension voiceLinkExtension = client.UseVoiceLink(new VoiceLinkConfiguration()
-            {
-                ServiceCollection = services
-            });
+            clientBuilder.ConfigureLogging(builder => builder.AddSerilog());
 
+            DiscordClient client = clientBuilder.Build();
+            VoiceLinkExtension voiceLinkExtension = client.UseVoiceLink();
             voiceLinkExtension.UserSpeaking += async (sender, e) =>
             {
                 FileStream fileStream = File.Open($"test/{e.Member.Id}.pcm", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);

@@ -1,9 +1,9 @@
 using System;
 using DSharpPlus.VoiceLink.Opus;
 
-namespace DSharpPlus.VoiceLink.AudioDecoders
+namespace DSharpPlus.VoiceLink.AudioCodecs
 {
-    public class Pcm16BitAudioDecoder : IAudioDecoder
+    public class Pcm16BitAudioCodec : IAudioCodec
     {
         // 16 bits per sample
         private const int BYTES_PER_SAMPLE = 2;
@@ -23,7 +23,7 @@ namespace DSharpPlus.VoiceLink.AudioDecoders
         public int Channels { get; init; }
         private OpusDecoder _opusDecoder { get; init; }
 
-        public Pcm16BitAudioDecoder(int channels = 2)
+        public Pcm16BitAudioCodec(int channels = 2)
         {
             Channels = channels;
             _opusDecoder = OpusDecoder.Create(OpusSampleRate.Opus48000Hz, channels);
