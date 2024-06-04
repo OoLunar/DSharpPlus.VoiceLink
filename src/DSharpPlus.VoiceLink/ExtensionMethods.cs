@@ -30,7 +30,7 @@ namespace DSharpPlus.VoiceLink
                 throw new InvalidOperationException("The VoiceLink extension requires the GuildVoiceStates intent.");
             }
 
-            VoiceLinkExtension extension = new(configuration ?? new());
+            VoiceLinkExtension extension = new(client, configuration ?? new());
             client.AddExtension(extension);
             return extension;
         }

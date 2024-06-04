@@ -28,7 +28,7 @@ namespace DSharpPlus.VoiceLink
         public IReadOnlyDictionary<ulong, VoiceLinkConnection> Connections => _connections;
         internal readonly ConcurrentDictionary<ulong, VoiceLinkConnection> _connections = new();
         internal readonly ConcurrentDictionary<ulong, VoiceLinkPendingConnection> _pendingConnections = new();
-        internal ILogger<VoiceLinkExtension> _logger = null!;
+        internal readonly ILogger<VoiceLinkExtension> _logger = null!;
 
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkConnectionEventArgs> ConnectionCreated { add => _connectionCreated.Register(value); remove => _connectionCreated.Unregister(value); }
         internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkConnectionEventArgs> _connectionCreated = new(VoiceLinkErrorHandler.Instance);
@@ -45,8 +45,15 @@ namespace DSharpPlus.VoiceLink
         public event AsyncEventHandler<VoiceLinkExtension, VoiceLinkUserEventArgs> UserDisconnected { add => _userDisconnected.Register(value); remove => _userDisconnected.Unregister(value); }
         internal readonly AsyncEvent<VoiceLinkExtension, VoiceLinkUserEventArgs> _userDisconnected = new(VoiceLinkErrorHandler.Instance);
 
-        public VoiceLinkExtension(VoiceLinkConfiguration configuration)
+        public VoiceLinkExtension(DiscordClient client, VoiceLinkConfiguration configuration)
         {
+            ArgumentNullException.ThrowIfNull(client);
+            ArgumentNullException.ThrowIfNull(configuration);
+            _logger = client.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
+
+            Client = client;
+            Client.VoiceStateUpdated += VoiceStateUpdateEventHandlerAsync;
+            Client.VoiceServerUpdated += VoiceServerUpdateEventHandlerAsync;
             Configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
             if (SodiumNativeMethods.Init() == -1)
             {
@@ -54,23 +61,7 @@ namespace DSharpPlus.VoiceLink
             }
         }
 
-        protected override void Setup(DiscordClient client)
-        {
-            if (client is null)
-            {
-                throw new ArgumentNullException(nameof(client));
-            }
-            else if (Client is not null)
-            {
-                throw new InvalidOperationException("This extension has already been registered to a client.");
-            }
-
-            Client = client;
-            Client.VoiceStateUpdated += VoiceStateUpdateEventHandlerAsync;
-            Client.VoiceServerUpdated += VoiceServerUpdateEventHandlerAsync;
-            _logger = client.ServiceProvider.GetRequiredService<ILogger<VoiceLinkExtension>>();
-        }
-
+        protected override void Setup(DiscordClient client) { }
         public override void Dispose() { }
 
         public async Task<VoiceLinkConnection> ConnectAsync(DiscordChannel channel, VoiceState voiceState, CancellationToken cancellationToken = default)
