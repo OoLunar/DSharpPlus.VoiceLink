@@ -48,7 +48,6 @@ namespace DSharpPlus.VoiceLink.Opus
             }
 
             // Trim the data to the encoded length
-            data = data[..encodedLength];
             return encodedLength;
         }
 
@@ -73,7 +72,6 @@ namespace DSharpPlus.VoiceLink.Opus
             }
 
             // Trim the data to the encoded length
-            data = data[..encodedLength];
             return encodedLength;
         }
 

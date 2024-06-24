@@ -9,7 +9,7 @@ namespace DSharpPlus.VoiceLink.Rtp
         /// </summary>
         /// <param name="source">The data to reference.</param>
         /// <returns>Whether the data contains a valid RTCP header.</returns>
-        public static bool IsRtcpReceiverReport(ReadOnlySpan<byte> source) => source.Length >= 8 && source[1] == 201;
+        public static bool HasRtcpReceiverReport(ReadOnlySpan<byte> source) => source.Length >= 8 && source[1] == 201;
 
         public static RtcpHeader DecodeHeader(ReadOnlySpan<byte> source)
         {

@@ -34,8 +34,10 @@ namespace DSharpPlus.VoiceLink
         public DiscordClient Client => Extension.Client;
         public DiscordUser User => Client.CurrentUser;
         public DiscordMember Member => Guild.CurrentMember;
-        public IReadOnlyDictionary<uint, VoiceLinkUser> Speakers => _speakers;
         public TimeSpan HeartbeatPing { get; private set; }
+        public VoiceLinkUser VoiceUser => _speakers[_ssrc];
+        public IReadOnlyDictionary<uint, VoiceLinkUser> Speakers => _speakers;
+        public PipeWriter AudioInput => _audioPipe.Writer;
 
         // Audio processing
         private ILogger<VoiceLinkConnection> _logger { get; init; }
@@ -45,6 +47,7 @@ namespace DSharpPlus.VoiceLink
         private AudioCodecFactory _audioDecoderFactory { get; init; }
         private byte[] _secretKey { get; set; } = [];
         private Pipe _audioPipe { get; init; } = new();
+        private uint _ssrc { get; set; }
 
         // Networking
         private readonly Pipe _websocketPipe = new();
@@ -64,6 +67,133 @@ namespace DSharpPlus.VoiceLink
             _logger = extension.Client.ServiceProvider.GetRequiredService<ILogger<VoiceLinkConnection>>();
             _voiceEncrypter = extension.Configuration.VoiceEncryptionCipher;
             _audioDecoderFactory = extension.Configuration.AudioCodecFactory;
+        }
+
+        public async ValueTask StartSpeakingAsync()
+        {
+            ushort sequence = 0;
+            uint timestamp = 0;
+            int writtenBytes = 0;
+            byte[] buffer = ArrayPool<byte>.Shared.Rent(OpusAudioCodec.MAX_BUFFER_SIZE + RtpUtilities.HeaderSize);
+
+            void WriteRtpHeader()
+            {
+                RtpHeader rtpHeader = new()
+                {
+                    Ssrc = _ssrc,
+                    Sequence = sequence,
+                    Timestamp = timestamp
+                };
+
+                _logger.LogTrace("Connection {GuildId}: Sending RTP Header: {RtpHeader}", Guild.Id, rtpHeader);
+                RtpUtilities.EncodeHeader(rtpHeader, buffer);
+
+                // Increase for the next packet
+                sequence++;
+                timestamp += 20;
+            }
+
+            bool TryEncryptOpusPacket(int length, out int writtenEncryptedBytes)
+            {
+                writtenEncryptedBytes = _voiceEncrypter.GetEncryptedSize(length);
+                if (writtenEncryptedBytes > buffer.Length)
+                {
+                    _logger.LogError("Connection {GuildId}: Encrypted buffer size is larger than the original buffer size. Skipping.", Guild.Id);
+                    return false;
+                }
+
+                byte[] encryptedBuffer = ArrayPool<byte>.Shared.Rent(writtenEncryptedBytes);
+                if (!_voiceEncrypter.TryEncryptOpusPacket(null!, buffer.AsSpan(0, length), _secretKey, encryptedBuffer))
+                {
+                    _logger.LogError("Connection {GuildId}: Failed to encrypt audio data. Skipping.", Guild.Id);
+                    ArrayPool<byte>.Shared.Return(encryptedBuffer);
+                    return false;
+                }
+
+                // Copy the encrypted data to the buffer
+                encryptedBuffer.AsSpan(0, writtenEncryptedBytes).CopyTo(buffer);
+                ArrayPool<byte>.Shared.Return(encryptedBuffer);
+                return true;
+            }
+
+            IAudioCodec audioCodec = _audioDecoderFactory(Extension.Client.ServiceProvider);
+
+            // Tell Discord we're sending audio
+            await _webSocket.SendAsync(new VoiceGatewayDispatch()
+            {
+                OpCode = VoiceOpCode.Speaking,
+                Data = new VoiceSpeakingPayload()
+                {
+                    Speaking = VoiceSpeakingIndicators.Microphone,
+                    Delay = 0,
+                    Ssrc = _ssrc
+                }
+            }, _cancellationTokenSource.Token);
+
+            // Start sending audio
+            CancellationTokenSource timeoutTokenSource = new();
+            while (!timeoutTokenSource.IsCancellationRequested)
+            {
+                if (!timeoutTokenSource.TryReset())
+                {
+                    timeoutTokenSource.Dispose();
+                    timeoutTokenSource = new();
+                }
+
+                timeoutTokenSource.CancelAfter(Extension.Configuration.SpeakingTimeout);
+                //timeoutTokenSource.Token.Register(_audioPipe.Reader.CancelPendingRead);
+
+                ReadResult readResult = await _audioPipe.Reader.ReadAsync();
+                if (readResult.IsCanceled || readResult.Buffer.Length == 0)
+                {
+                    break;
+                }
+
+                // Rtp Header
+                WriteRtpHeader();
+
+                // Transcode to Opus
+                writtenBytes = audioCodec.EncodeOpus(readResult.Buffer, buffer);
+
+                // Encrypt Opus audio
+                if (!TryEncryptOpusPacket(writtenBytes, out writtenBytes))
+                {
+                    continue;
+                }
+
+                // Send
+                await _udpClient.SendAsync(buffer, RtpUtilities.HeaderSize + writtenBytes, _endpoint!.Host, _endpoint.Port);
+                await Task.Delay(20);
+            }
+
+            // Write 5 frames of silence
+            writtenBytes = 0;
+            for (int i = 0; i < 5; i++)
+            {
+                OpusAudioCodec.SilenceFrame.CopyTo(buffer.AsSpan(writtenBytes));
+                writtenBytes += OpusAudioCodec.SilenceFrame.Length;
+            }
+
+            // Write the RTP header
+            WriteRtpHeader();
+
+            // Encrypt the silent data
+            TryEncryptOpusPacket(writtenBytes, out writtenBytes);
+
+            // Send the silent packet
+            await _udpClient.SendAsync(buffer, RtpUtilities.HeaderSize + writtenBytes, _endpoint!.Host, _endpoint.Port);
+
+            // Tell Discord we're no longer sending audio
+            await _webSocket.SendAsync(new VoiceSpeakingPayload()
+            {
+                Speaking = VoiceSpeakingIndicators.None,
+                Delay = 0,
+                Ssrc = _ssrc
+            }, _cancellationTokenSource.Token);
+
+            // Return the buffer
+            ArrayPool<byte>.Shared.Return(buffer);
+            await Task.Delay(20000);
         }
 
         public async ValueTask DisconnectAsync()
@@ -157,7 +287,7 @@ namespace DSharpPlus.VoiceLink
             await InitializeAsync(pendingConnection.VoiceStateUpdateEventArgs!, pendingConnection.VoiceServerUpdateEventArgs!, _cancellationTokenSource.Token);
         }
 
-        public async ValueTask InitializeAsync(VoiceStateUpdatedEventArgs voiceStateUpdateEventArgs, VoiceServerUpdatedEventArgs voiceServerUpdateEventArgs, CancellationToken cancellationToken = default)
+        internal async ValueTask InitializeAsync(VoiceStateUpdatedEventArgs voiceStateUpdateEventArgs, VoiceServerUpdatedEventArgs voiceServerUpdateEventArgs, CancellationToken cancellationToken = default)
         {
             // Setup endpoint
             if (voiceServerUpdateEventArgs.Endpoint is null)
@@ -320,7 +450,7 @@ namespace DSharpPlus.VoiceLink
                     // This is a hotpath. Any modifications to this code should always
                     // lead to equal or better performance. If you're not sure, don't touch it.
                     UdpReceiveResult udpReceiveResult = await _udpClient.ReceiveAsync(_cancellationTokenSource.Token);
-                    if (RtpUtilities.IsRtpHeader(udpReceiveResult.Buffer))
+                    if (RtpUtilities.HasRtpHeader(udpReceiveResult.Buffer))
                     {
                         // When the VoiceLinkUser is not null, this means that voice data was
                         // successfully decrypted and decoded and is ready to be consumed by the dev.
@@ -330,7 +460,7 @@ namespace DSharpPlus.VoiceLink
                             await voiceLinkUser._audioPipe.Writer.FlushAsync(_cancellationTokenSource.Token);
                         }
                     }
-                    else if (RtcpUtilities.IsRtcpReceiverReport(udpReceiveResult.Buffer))
+                    else if (RtcpUtilities.HasRtcpReceiverReport(udpReceiveResult.Buffer))
                     {
                         HandleRtcpReceiverReportPacket(udpReceiveResult.Buffer);
                     }
@@ -423,7 +553,7 @@ namespace DSharpPlus.VoiceLink
                 Span<byte> audioBuffer = voiceLinkUser._audioPipe.Writer.GetSpan(maxBufferSize);
 
                 // Decode the Opus packet
-                int writtenBytes = voiceLinkUser.AudioDecoder.Decode(hasPacketLoss, decryptedAudio, audioBuffer);
+                int writtenBytes = voiceLinkUser.AudioDecoder.DecodeOpus(hasPacketLoss, decryptedAudio, audioBuffer);
 
                 // Write the audio to the pipe
                 voiceLinkUser._audioPipe.Writer.Advance(maxBufferSize);

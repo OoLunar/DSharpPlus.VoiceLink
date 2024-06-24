@@ -19,7 +19,7 @@ namespace DSharpPlus.VoiceLink.Rtp
         /// </summary>
         /// <param name="source">The data to reference.</param>
         /// <returns>Whether the data contains a valid RTP header.</returns>
-        public static bool IsRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && (source[0] == Version || source[0] == VersionWithExtension) && source[1] == DiscordPayloadType;
+        public static bool HasRtpHeader(ReadOnlySpan<byte> source) => source.Length >= 12 && (source[0] == Version || source[0] == VersionWithExtension) && source[1] == DiscordPayloadType;
 
         /// <summary>
         /// Encodes a RTP header into the given buffer.
@@ -29,7 +29,7 @@ namespace DSharpPlus.VoiceLink.Rtp
         /// <param name="ssrc">The srrc of the audio frame.</param>
         /// <param name="target">Which buffer to write to.</param>
         /// <exception cref="ArgumentException">The target buffer must have a minimum of 12 bytes for the RTP header to fit.</exception>
-        public static void EncodeHeader(ushort sequence, uint timestamp, uint ssrc, Span<byte> target)
+        public static void EncodeHeader(RtpHeader header, Span<byte> target)
         {
             if (target.Length < 12)
             {
@@ -39,9 +39,9 @@ namespace DSharpPlus.VoiceLink.Rtp
             target.Clear();
             target[0] = Version;
             target[1] = DiscordPayloadType;
-            BinaryPrimitives.WriteUInt16BigEndian(target[2..4], sequence);
-            BinaryPrimitives.WriteUInt32BigEndian(target[4..8], timestamp);
-            BinaryPrimitives.WriteUInt32BigEndian(target[8..12], ssrc);
+            BinaryPrimitives.WriteUInt16BigEndian(target[2..4], header.Sequence);
+            BinaryPrimitives.WriteUInt32BigEndian(target[4..8], header.Timestamp);
+            BinaryPrimitives.WriteUInt32BigEndian(target[8..12], header.Ssrc);
         }
 
         /// <summary>

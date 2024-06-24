@@ -61,8 +61,9 @@ namespace DSharpPlus.VoiceLink
             VoiceReadyPayload voiceReadyPayload = connection._websocketPipe.Reader.Parse<VoiceGatewayDispatch<VoiceReadyPayload>>(result).Data;
 
             // Insert our SSRC code
-            connection._logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", connection.Guild.Id, voiceReadyPayload.Ssrc);
+            connection._ssrc = voiceReadyPayload.Ssrc;
             connection._speakers.Add(voiceReadyPayload.Ssrc, new(connection, voiceReadyPayload.Ssrc, connection.Member, connection._audioDecoderFactory(connection.Extension.Client.ServiceProvider)));
+            connection._logger.LogDebug("Connection {GuildId}: Bot's SSRC code is {Ssrc}.", connection.Guild.Id, voiceReadyPayload.Ssrc);
 
             // Setup UDP while also doing ip discovery
             connection._logger.LogDebug("Connection {GuildId}: Setting up UDP, sending ip discovery...", connection.Guild.Id);

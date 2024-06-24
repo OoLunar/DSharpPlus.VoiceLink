@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Threading.Tasks;
+using DSharpPlus.VoiceLink.AudioCodecs;
 using DSharpPlus.VoiceLink.Enums;
 using Microsoft.Extensions.DependencyInjection;
 using Serilog;
@@ -62,11 +63,23 @@ namespace DSharpPlus.VoiceLink.Examples.HelloWorld
             clientBuilder.ConfigureLogging(builder => builder.AddSerilog());
 
             DiscordClient client = clientBuilder.Build();
-            VoiceLinkExtension voiceLinkExtension = client.UseVoiceLink();
+            VoiceLinkExtension voiceLinkExtension = client.UseVoiceLink(new()
+            {
+                AudioCodecFactory = (serviceProvider) => new OpusAudioCodec()
+            });
+
             voiceLinkExtension.UserSpeaking += async (sender, e) =>
             {
                 FileStream fileStream = File.Open($"test/{e.Member.Id}.pcm", FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.ReadWrite);
                 await e.VoiceUser.AudioStream.CopyToAsync(fileStream);
+                await fileStream.DisposeAsync();
+            };
+
+            voiceLinkExtension.ConnectionCreated += async (sender, e) =>
+            {
+                FileStream fileStream = File.Open("res/test.opus", FileMode.Open, FileAccess.Read, FileShare.Read);
+                _ = fileStream.CopyToAsync(e.Connection.AudioInput.AsStream(true));
+                await e.Connection.StartSpeakingAsync();
                 await fileStream.DisposeAsync();
             };
 
