@@ -20,7 +20,7 @@ git fetch --tags
 
 # Export the latest tag
 OPUS_VERSION="$(git describe --tags $(git rev-list --tags --max-count=1))"
-echo "OPUS_VERSION=$OPUS_VERSION" >> $GITHUB_ENV
+echo "version=$OPUS_VERSION" >> $GITHUB_OUTPUT
 
 # Checkout the latest tag
 git checkout "$OPUS_VERSION"

@@ -6,8 +6,9 @@
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
     <Authors>OoLunar, InFTord, Aaron2550</Authors>
     <IsPackable>true</IsPackable>
+    <Version>0.1.0</Version>
   </PropertyGroup>
   <ItemGroup>
-    <Content CopyToOutputDirectory="PreserveNewest" Include="$(ProjectRoot)/libs/libopus/**/*" Link="runtimes/%(RecursiveDir)%(FileName)%(Extension)" Pack="true" PackagePath="runtimes/%(RecursiveDir)%(FileName)%(Extension)" />
+    <None Include="$(ProjectRoot)/libs/libopus/**/*" Pack="true" PackagePath="runtimes" />
   </ItemGroup>
 </Project>

@@ -20,7 +20,7 @@ git fetch --tags
 
 # Export the latest tag
 SODIUM_VERSION="$(git describe --tags $(git rev-list --tags --max-count=1))"
-echo "SODIUM_VERSION=$SODIUM_VERSION" >> $GITHUB_ENV
+echo "version=$SODIUM_VERSION" >> $GITHUB_OUTPUT
 
 # Checkout the latest tag
 git checkout "$SODIUM_VERSION"
