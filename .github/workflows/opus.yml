@@ -162,7 +162,7 @@ jobs:
         with:
           add: "libs/libopus/"
           default_author: github_actions
-          message: Update ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
+          message: Update Opus ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
           pull: "--rebase --autostash"
           push: true
   update-version:
