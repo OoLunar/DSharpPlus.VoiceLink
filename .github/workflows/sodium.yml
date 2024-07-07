@@ -152,3 +152,11 @@ jobs:
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: "Push changes"
+        uses: EndBug/add-and-commit@v9
+        with:
+          add: "src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj"
+          default_author: github_actions
+          message: Update Sodium version to ${{ needs.build.outputs.version }}
+          pull: "--rebase --autostash"
+          push: true
