@@ -174,7 +174,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Update version
         run: |
-          sed -i "s/<VERSION>.*<\/VERSION>/<VERSION>${{ needs.build.outputs.version }}<\/VERSION>/" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
+          sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
         shell: bash
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
