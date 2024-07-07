@@ -6,7 +6,7 @@
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
     <Authors>OoLunar, InFTord, Aaron2550</Authors>
     <IsPackable>true</IsPackable>
-    <Version>0.1.0</Version>
+    <Version>v1.5.2</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(ProjectRoot)/libs/libopus/**/*" Pack="true" PackagePath="runtimes" />
