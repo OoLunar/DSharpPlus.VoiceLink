@@ -23,7 +23,5 @@
   </PropertyGroup>
   <ItemGroup>
     <EmbeddedResource Include="$(ProjectRoot)/res/*.png" Pack="true" PackagePath=""/>
-    <EmbeddedResource Include="$(ProjectRoot)/LICENSE" Pack="true" PackagePath=""/>
-    <EmbeddedResource Include="$(ProjectRoot)/README.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 </Project>

@@ -10,5 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(ProjectRoot)/libs/libsodium/**/*" Pack="true" PackagePath="runtimes" />
+    <EmbeddedResource Include="LICENSE" Pack="true" PackagePath=""/>
+    <EmbeddedResource Include="README.md" Pack="true" PackagePath=""/>
   </ItemGroup>
 </Project>
