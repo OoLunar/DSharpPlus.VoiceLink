@@ -6,7 +6,7 @@
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>
     <Authors>OoLunar, InFTord, Aaron2550</Authors>
     <IsPackable>true</IsPackable>
-    <Version>1.0.20.1</Version>
+    <Version>1.0.20</Version>
   </PropertyGroup>
   <ItemGroup>
     <None Include="$(ProjectRoot)/libs/libsodium/**/*" Pack="true" PackagePath="runtimes" />
