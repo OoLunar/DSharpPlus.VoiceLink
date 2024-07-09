@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# Check if the output file exists and if we've already built it for this version
-EXPORT_DIR="$WORKSPACE/libs/libopus/$RID/native"
-if [ -f "$EXPORT_DIR/$FILE" ]; then
-  COMMIT_MESSAGE="$(git log -1 --pretty=%B -- "$EXPORT_DIR/$FILE")"
-  if [[ "$COMMIT_MESSAGE" == *"$OPUS_VERSION"* ]]; then
-    echo "Already built $FILE for $OPUS_VERSION"
-    exit 0
-  fi
-fi
-
 # Create Opus dir
 mkdir -p "$WORKSPACE/libs/opus"
 cd "$WORKSPACE/libs/opus"
@@ -21,6 +11,16 @@ git fetch --tags
 # Export the latest tag
 OPUS_VERSION="$(git describe --tags $(git rev-list --tags --max-count=1))"
 echo "version=$(echo $OPUS_VERSION | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/')" >> $GITHUB_OUTPUT
+
+# Check if the output file exists and if we've already built it for this version
+EXPORT_DIR="$WORKSPACE/libs/libopus/$RID/native"
+if [ -f "$EXPORT_DIR/$FILE" ]; then
+  COMMIT_MESSAGE="$(git log -1 --pretty=%B -- "$EXPORT_DIR/$FILE")"
+  if [[ "$COMMIT_MESSAGE" == *"$OPUS_VERSION"* ]]; then
+    echo "Already built $FILE for $OPUS_VERSION"
+    exit 0
+  fi
+fi
 
 # Checkout the latest tag
 git checkout "$OPUS_VERSION"
