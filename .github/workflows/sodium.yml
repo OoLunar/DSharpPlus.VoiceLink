@@ -146,7 +146,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: sodium-${{ steps.build.outputs.version }}-${{ matrix.config.rid }}
-          path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
+          path: libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
   update-version:
     name: Update .NET project version
     needs: build
