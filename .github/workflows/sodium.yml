@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/sodium.yml'
       - '.github/scripts/package-sodium.sh'
+  # Once every 2 months
+  schedule:
+    - cron: '0 0 1 */2 *'
 
 permissions:
   contents: write
@@ -139,6 +142,11 @@ jobs:
           message: Update Sodium ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
           pull: "--rebase --autostash"
           push: true
+      - name: "Upload Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: sodium-${{ steps.build.outputs.version }}-${{ matrix.config.rid }}
+          path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
   update-version:
     name: Update .NET project version
     needs: build

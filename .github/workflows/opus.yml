@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/opus.yml'
       - '.github/scripts/package-opus.sh'
+  # Once every 2 months
+  schedule:
+    - cron: '0 0 1 */2 *'
 
 permissions:
   contents: write
@@ -165,6 +168,11 @@ jobs:
           message: Update Opus ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
           pull: "--rebase --autostash"
           push: true
+      - name: "Upload Artifact"
+        uses: actions/upload-artifact@v4
+        with:
+          name: opus-${{ steps.build.outputs.version }}-${{ matrix.config.rid }}
+          path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
   update-version:
     name: Update .NET project version
     needs: build
