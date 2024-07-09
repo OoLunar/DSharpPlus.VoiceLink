@@ -169,6 +169,7 @@ jobs:
     name: Update .NET project version
     needs: build
     runs-on: ubuntu-latest
+    if: needs.build.outputs.version != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4

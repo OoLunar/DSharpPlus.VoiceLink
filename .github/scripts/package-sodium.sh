@@ -25,6 +25,9 @@ echo "version=$(echo $SODIUM_VERSION | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/')" 
 # Checkout the latest tag
 git checkout "$SODIUM_VERSION"
 
+# Automatically exit if the build fails
+set -e
+
 # Build the library
 $COMMAND
 

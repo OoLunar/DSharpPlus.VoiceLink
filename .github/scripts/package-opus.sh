@@ -25,6 +25,9 @@ echo "version=$(echo $OPUS_VERSION | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/')" >>
 # Checkout the latest tag
 git checkout "$OPUS_VERSION"
 
+# Automatically exit if the build fails
+set -e
+
 # Build the library
 cmake -S . -B build $COMMAND_ARGS -DOPUS_BUILD_SHARED_LIBRARY=ON -DCMAKE_BUILD_TYPE=Release -Wno-dev
 cmake --build build --config Release

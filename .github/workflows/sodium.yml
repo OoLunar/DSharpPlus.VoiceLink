@@ -22,84 +22,84 @@ jobs:
       matrix:
         config:
           - {
-            os: ubuntu-latest,
-            command: "./dist-build/android-armv8-a.sh",
-            output-file: "libsodium-android-armv8-a+crypto/lib/libsodium.so",
-            file: "libsodium.so",
-            rid: "android-arm64",
+              os: ubuntu-latest,
+              command: "./dist-build/android-armv8-a.sh",
+              output-file: "libsodium-android-armv8-a+crypto/lib/libsodium.so",
+              file: "libsodium.so",
+              rid: "android-arm64",
           }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu",
-            output-file: "zig-out/lib/libsodium.so",
-            file: "libsodium.so",
-            rid: "linux-x64",
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-gnu",
+              output-file: "zig-out/lib/libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-x64",
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-musl",
-            output-file: "zig-out/lib/libsodium.so",
-            file: "libsodium.so",
-            rid: "linux-musl-x64",
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-linux-musl",
+              output-file: "zig-out/lib/libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-musl-x64",
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-gnu",
-            output-file: "zig-out/lib/libsodium.so",
-            file: "libsodium.so",
-            rid: "linux-arm64",
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-gnu",
+              output-file: "zig-out/lib/libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-arm64",
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-musl",
-            output-file: "zig-out/lib/libsodium.so",
-            file: "libsodium.so",
-            rid: "linux-musl-arm64",
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-linux-musl",
+              output-file: "zig-out/lib/libsodium.so",
+              file: "libsodium.so",
+              rid: "linux-musl-arm64",
+              }
           - {
-            os: macos-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-macos",
-            output-file: "zig-out/lib/libsodium.dylib",
-            file: "libsodium.dylib",
-            rid: "osx-x64",
-            }
+              os: macos-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-macos",
+              output-file: "zig-out/lib/libsodium.dylib",
+              file: "libsodium.dylib",
+              rid: "osx-x64",
+              }
           - {
-            os: macos-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-macos",
-            output-file: "zig-out/lib/libsodium.dylib",
-            file: "libsodium.dylib",
-            rid: "osx-arm64",
+              os: macos-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-macos",
+              output-file: "zig-out/lib/libsodium.dylib",
+              file: "libsodium.dylib",
+              rid: "osx-arm64",
           }
           - {
-            os: macos-latest,
-            command: "bash ../../.github/scripts/apple-xcframework.sh",
-            output-file: "libsodium-apple/ios/lib/libsodium.dylib",
-            file: "libsodium.dylib",
-            rid: "ios-arm64",
-            }
+              os: macos-latest,
+              command: "bash ../../.github/scripts/apple-xcframework.sh",
+              output-file: "libsodium-apple/ios/lib/libsodium.dylib",
+              file: "libsodium.dylib",
+              rid: "ios-arm64",
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86-windows",
-            output-file: "zig-out/lib/sodium_shared.dll",
-            file: "sodium.dll",
-            rid: "win-x86",
-            arch: "x86"
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86-windows",
+              output-file: "zig-out/lib/libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-x86",
+              arch: "x86"
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-windows",
-            output-file: "zig-out/lib/sodium_shared.dll",
-            file: "sodium.dll",
-            rid: "win-x64",
-            arch: "x64"
-            }
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=x86_64-windows",
+              output-file: "zig-out/lib/libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-x64",
+              arch: "x64"
+              }
           - {
-            os: ubuntu-latest,
-            command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-windows",
-            output-file: "zig-out/lib/sodium_shared.dll",
-            file: "sodium.dll",
-            rid: "win-arm64",
-            arch: "arm64"
+              os: ubuntu-latest,
+              command: "zig build -Dshared=true -Doptimize=ReleaseFast -Dtarget=aarch64-windows",
+              output-file: "zig-out/lib/libsodium.dll",
+              file: "sodium.dll",
+              rid: "win-arm64",
+              arch: "arm64"
             }
     steps:
       - name: Checkout
@@ -143,6 +143,7 @@ jobs:
     name: Update .NET project version
     needs: build
     runs-on: ubuntu-latest
+    if: needs.build.outputs.version != ''
     steps:
       - name: Checkout
         uses: actions/checkout@v4
