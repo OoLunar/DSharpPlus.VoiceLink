@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <Nullable>disable</Nullable>
     <PackageId>OoLunar.DSharpPlus.VoiceLink.Natives.Opus</PackageId>
     <Description>Provides the dynamic library files for Opus.</Description>
     <PackageTags>discord, discord-bot, discord-api, dsharpplus, discord-voice, dsharpplus-voicenext</PackageTags>

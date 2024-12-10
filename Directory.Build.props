@@ -3,7 +3,6 @@
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <Nullable>enable</Nullable>
     <SuppressNETCoreSdkPreviewMessage>true</SuppressNETCoreSdkPreviewMessage>
-    <TargetFrameworks>net8.0</TargetFrameworks>
     <IncludeSymbols>true</IncludeSymbols>
     <SymbolPackageFormat>snupkg</SymbolPackageFormat>
     <IsPackable>false</IsPackable>
@@ -22,6 +21,6 @@
     <RepositoryUrl>https://github.com/OoLunar/DSharpPlus.VoiceLink</RepositoryUrl>
   </PropertyGroup>
   <ItemGroup>
-    <EmbeddedResource Include="$(ProjectRoot)/res/*.png" Pack="true" PackagePath=""/>
+    <EmbeddedResource Include="$(ProjectRoot)/res/*.png" Pack="true" />
   </ItemGroup>
 </Project>
