@@ -22,7 +22,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
       - name: Create Cache Deposit
-        uses: actions/cache@v4
+        uses: actions/cache/save@v4
         with:
           enableCrossOsArchive: true
           key: opus
@@ -194,7 +194,6 @@ jobs:
           fail-on-cache-miss: true
           key: opus
           path: libs/libopus/
-          restore-keys: opus
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
