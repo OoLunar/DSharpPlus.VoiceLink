@@ -15,21 +15,8 @@ permissions:
   contents: write
 
 jobs:
-  create-cache:
-    name: Create Binary Cache
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-      - name: Create Cache Deposit
-        uses: actions/cache/save@v4
-        with:
-          enableCrossOsArchive: true
-          key: sodium-${{ hashFiles('libs/libsodium/') }}
-          path: libs/libsodium/
   build:
     name: Build Sodium for ${{ matrix.config.rid }}
-    needs: create-cache
     runs-on: ${{ matrix.config.os }}
     outputs:
       version: ${{ steps.build.outputs.version }}
@@ -147,12 +134,6 @@ jobs:
           export RID='${{ matrix.config.rid }}'
           export JOB_INDEX='${{ strategy.job-index }}'
           bash '${{ github.workspace }}/.github/scripts/package-sodium.sh'
-      - name: "Cache binaries"
-        uses: actions/cache/save@v4
-        with:
-          enableCrossOsArchive: true
-          key: ${{ jobs.create-cache.outputs.cache-primary-key }}
-          path: libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
       - name: "Upload Artifact"
         uses: actions/upload-artifact@v4
         with:
@@ -166,13 +147,15 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Download cached artifacts
-        uses: actions/cache/restore@v4
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
         with:
-          enableCrossOsArchive: true
-          fail-on-cache-miss: true
-          key: ${{ jobs.create-cache.outputs.cache-primary-key }}
-          path: libs/libsodium/
+          path: tmp/libsodium
+      - name: Separate Artifacts
+        run: |
+          for file in tmp/libsodium/*; do
+            cut -d '-' -f 3,4 | xargs -I {} mv $file/* libs/libsodium/{}/native/
+          done
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj"
@@ -182,6 +165,7 @@ jobs:
       - name: "Push changes"
         uses: EndBug/add-and-commit@v9
         with:
+          add: "src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj libs/libsodium/"
           default_author: github_actions
           message: Update Sodium version to ${{ needs.build.outputs.version }}
           pull: "--rebase --autostash"
