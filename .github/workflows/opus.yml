@@ -15,6 +15,19 @@ permissions:
   contents: write
 
 jobs:
+  create-cache:
+    name: Create Binary Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Cache Deposit
+        uses: actions/cache@v4
+        with:
+          enableCrossOsArchive: true
+          key: opus
+          path: libs/libopus/
+
   build:
     name: Build Opus for ${{ matrix.config.rid }}
     runs-on: ${{ matrix.config.os }}
@@ -160,19 +173,11 @@ jobs:
           export RID='${{ matrix.config.rid }}'
           export JOB_INDEX='${{ strategy.job-index }}'
           bash '${{ github.workspace }}/.github/scripts/package-opus.sh'
-      - name: "Update ${{ matrix.config.rid }}"
-        uses: EndBug/add-and-commit@v9
-        with:
-          add: "libs/libopus/"
-          default_author: github_actions
-          message: Update Opus ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
-          pull: "--rebase --autostash"
-          push: true
       - name: "Cache binaries"
         uses: actions/cache/save@v4
         with:
           enableCrossOsArchive: true
-          key: opus-${{ steps.build.outputs.version }}
+          key: opus
           path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
   update-version:
     name: Update .NET project version
@@ -187,9 +192,9 @@ jobs:
         with:
           enableCrossOsArchive: true
           fail-on-cache-miss: true
-          key: opus-${{ needs.build.outputs.version }}
+          key: opus
           path: libs/libopus/
-          restore-keys: opus-${{ needs.build.outputs.version }}
+          restore-keys: opus
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
