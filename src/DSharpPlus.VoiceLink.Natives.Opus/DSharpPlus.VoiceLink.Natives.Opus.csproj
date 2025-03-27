@@ -10,7 +10,7 @@
     <Version>1.5.2</Version>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(ProjectRoot)/libs/libopus/**/*" Pack="true" PackagePath="runtimes" />
+    <None Include="$(ProjectRoot)/src/DSharpPlus.VoiceLink.Natives.Opus/runtime.json" Pack="true" PackagePath=""/>
     <EmbeddedResource Include="LICENSE" Pack="true" PackagePath=""/>
     <EmbeddedResource Include="README.md" Pack="true" PackagePath=""/>
   </ItemGroup>

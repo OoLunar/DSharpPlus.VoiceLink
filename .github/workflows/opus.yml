@@ -185,6 +185,22 @@ jobs:
             cp -r "$file"/* "libs/libopus/$arch/native"
           done
           rm -rf tmp/libopus
+
+          {
+            echo '{ "runtimes": { '
+            ls libs/libopus | cat | while read -r rid; do
+              [ -n "$rid" ] || continue
+              printf '"%s": { "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": { "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.%s": "${{ needs.build.outputs.version }}" } }' "$rid" "$rid"
+
+              # Check if this is not the last line
+              if [ "$(ls libs/libopus | cat | tail -n 1)" != "$rid" ]; then
+                echo ","
+              else
+                echo
+              fi
+            done
+            echo '}}'
+          } | jq > src/DSharpPlus.VoiceLink.Natives.Opus/runtime.json
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
