@@ -1,0 +1,59 @@
+{
+  "runtimes": {
+    "android-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.android-arm64": "1.5.2"
+      }
+    },
+    "ios-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.ios-arm64": "1.5.2"
+      }
+    },
+    "linux-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.linux-arm64": "1.5.2"
+      }
+    },
+    "linux-musl-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.linux-musl-arm64": "1.5.2"
+      }
+    },
+    "linux-musl-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.linux-musl-x64": "1.5.2"
+      }
+    },
+    "linux-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.linux-x64": "1.5.2"
+      }
+    },
+    "osx-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.osx-arm64": "1.5.2"
+      }
+    },
+    "osx-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.osx-x64": "1.5.2"
+      }
+    },
+    "win-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.win-arm64": "1.5.2"
+      }
+    },
+    "win-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.win-x64": "1.5.2"
+      }
+    },
+    "win-x86": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Opus": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Opus.win-x86": "1.5.2"
+      }
+    }
+  }
+}
