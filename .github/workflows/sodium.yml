@@ -158,6 +158,7 @@ jobs:
             mkdir -p "libs/libsodium/$arch/native"
             cp -r "$file"/* "libs/libsodium/$arch/native"
           done
+          rm -rf tmp/libsodium
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj"

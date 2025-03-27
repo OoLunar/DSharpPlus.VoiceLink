@@ -184,6 +184,7 @@ jobs:
             mkdir -p "libs/libopus/$arch/native"
             cp -r "$file"/* "libs/libopus/$arch/native"
           done
+          rm -rf tmp/libopus
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
