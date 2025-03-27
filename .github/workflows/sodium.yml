@@ -154,7 +154,7 @@ jobs:
       - name: Separate Artifacts
         run: |
           for file in tmp/libsodium/*; do
-            cut -d '-' -f 3,4 | xargs -I {} mv $file/* libs/libsodium/{}/native/
+            cut -d '-' -f 3,4 | xargs -I {} mv tmp/libsodium/$file/* libs/libsodium/{}/native/
           done
       - name: Update version
         run: |
