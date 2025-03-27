@@ -1,0 +1,59 @@
+{
+  "runtimes": {
+    "android-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.android-arm64": "1.0.20"
+      }
+    },
+    "ios-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.ios-arm64": "1.0.20"
+      }
+    },
+    "linux-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.linux-arm64": "1.0.20"
+      }
+    },
+    "linux-musl-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.linux-musl-arm64": "1.0.20"
+      }
+    },
+    "linux-musl-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.linux-musl-x64": "1.0.20"
+      }
+    },
+    "linux-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.linux-x64": "1.0.20"
+      }
+    },
+    "osx-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.osx-arm64": "1.0.20"
+      }
+    },
+    "osx-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.osx-x64": "1.0.20"
+      }
+    },
+    "win-arm64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.win-arm64": "1.0.20"
+      }
+    },
+    "win-x64": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.win-x64": "1.0.20"
+      }
+    },
+    "win-x86": {
+      "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium": {
+        "OoLunar.DSharpPlus.VoiceLink.Natives.Sodium.win-x86": "1.0.20"
+      }
+    }
+  }
+}
