@@ -168,11 +168,12 @@ jobs:
           message: Update Opus ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
           pull: "--rebase --autostash"
           push: true
-      - name: "Cache Opus ${{ matrix.config.rid }}"
+      - name: "Cache binaries"
         uses: actions/cache/save@v4
         with:
-          path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
+          enableCrossOsArchive: true
           key: opus-${{ steps.build.outputs.version }}
+          path: libs/libopus/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
   update-version:
     name: Update .NET project version
     needs: build
@@ -184,8 +185,11 @@ jobs:
       - name: Download cached artifacts
         uses: actions/cache/restore@v4
         with:
-          path: libs/libopus/
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
           key: opus-${{ needs.build.outputs.version }}
+          path: libs/libopus/
+          restore-keys: opus-${{ needs.build.outputs.version }}
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Opus/DSharpPlus.VoiceLink.Natives.Opus.csproj"
