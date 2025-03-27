@@ -15,8 +15,21 @@ permissions:
   contents: write
 
 jobs:
+  create-cache:
+    name: Create Binary Cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Create Cache Deposit
+        uses: actions/cache/save@v4
+        with:
+          enableCrossOsArchive: true
+          key: opus
+          path: libs/libsodium/
   build:
     name: Build Sodium for ${{ matrix.config.rid }}
+    needs: create-cache
     runs-on: ${{ matrix.config.os }}
     outputs:
       version: ${{ steps.build.outputs.version }}
@@ -134,14 +147,12 @@ jobs:
           export RID='${{ matrix.config.rid }}'
           export JOB_INDEX='${{ strategy.job-index }}'
           bash '${{ github.workspace }}/.github/scripts/package-sodium.sh'
-      - name: "Update ${{ matrix.config.rid }}"
-        uses: EndBug/add-and-commit@v9
+      - name: "Cache binaries"
+        uses: actions/cache/save@v4
         with:
-          add: "libs/libsodium/"
-          default_author: github_actions
-          message: Update Sodium ${{ matrix.config.rid }} to ${{ steps.build.outputs.version }}
-          pull: "--rebase --autostash"
-          push: true
+          enableCrossOsArchive: true
+          key: opus
+          path: libs/libsodium/${{ matrix.config.rid }}/native/${{ matrix.config.file }}
       - name: "Upload Artifact"
         uses: actions/upload-artifact@v4
         with:
@@ -155,6 +166,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Download cached artifacts
+        uses: actions/cache/restore@v4
+        with:
+          enableCrossOsArchive: true
+          fail-on-cache-miss: true
+          key: opus
+          path: libs/libsodium/
       - name: Update version
         run: |
           sed -i "s|<Version>.*</Version>|<Version>${{ needs.build.outputs.version }}</Version>|g" "${{ github.workspace }}/src/DSharpPlus.VoiceLink.Natives.Sodium/DSharpPlus.VoiceLink.Natives.Sodium.csproj"
