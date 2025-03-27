@@ -27,9 +27,9 @@ jobs:
           enableCrossOsArchive: true
           key: opus
           path: libs/libopus/
-
   build:
     name: Build Opus for ${{ matrix.config.rid }}
+    needs: create-cache
     runs-on: ${{ matrix.config.os }}
     outputs:
       version: ${{ steps.build.outputs.version }}
