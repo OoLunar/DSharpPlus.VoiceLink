@@ -154,7 +154,9 @@ jobs:
       - name: Separate Artifacts
         run: |
           for file in tmp/libsodium/*; do
-            cut -d '-' -f 3,4 | xargs -I {} mv tmp/libsodium/$file/* libs/libsodium/{}/native/
+            arch="$(echo "$file" | cut -d '-' -f 3,4)"
+            mkdir -p "libs/libsodium/$arch/native"
+            cp -r "$file"/* "libs/libsodium/$arch/native"
           done
       - name: Update version
         run: |
