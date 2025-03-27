@@ -180,7 +180,7 @@ jobs:
       - name: Separate Artifacts
         run: |
           for file in tmp/libopus/*; do
-            arch="$(echo "$file" | cut -d '-' -f 3,4)"
+            arch="$(echo "$file" | cut -d '-' -f 3-)"
             mkdir -p "libs/libopus/$arch/native"
             cp -r "$file"/* "libs/libopus/$arch/native"
           done

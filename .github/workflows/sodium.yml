@@ -154,7 +154,7 @@ jobs:
       - name: Separate Artifacts
         run: |
           for file in tmp/libsodium/*; do
-            arch="$(echo "$file" | cut -d '-' -f 3,4)"
+            arch="$(echo "$file" | cut -d '-' -f 3-)"
             mkdir -p "libs/libsodium/$arch/native"
             cp -r "$file"/* "libs/libsodium/$arch/native"
           done
